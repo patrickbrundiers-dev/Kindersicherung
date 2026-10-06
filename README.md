@@ -22,6 +22,7 @@ Pro Einrichtung entsteht ein Gerät mit eigener Sperre. Du kannst die Integratio
 | notify-Entitäten | Entitäten für `notify.send_message`, z. B. eine Sprachausgabe im Wohnzimmer. |
 | Zusätzliche Bestätigungs-Schalter | Optional: vorhandene `input_boolean` oder Schalter, die ebenfalls bestätigen können (z. B. dein bisheriger Schalter, damit Dashboards weiter funktionieren). |
 | Nachricht | Text der Benachrichtigung. |
+| Hinweis bei Sperre | Bei Sperre geht eine Nachricht an alle Ziele („gesperrt bis 17:42 Uhr“). Wird währenddessen ein Fernseher eingeschaltet, sagen die notify-Entitäten (z. B. Sprachausgabe) die Sperrzeit an, höchstens einmal pro Minute. |
 | Aktiv ab / bis, Wochentage | Zeitfenster der Abfrage. Gleiche Start- und Endzeit bedeutet ganztägig, Start nach Ende ein Fenster über Mitternacht. Der Wochentag bezieht sich auf den aktuellen Tag. Standard: 00:00 bis 19:00 an allen Tagen. |
 | Zeit zum Bestätigen | Standard 30 Sekunden. |
 | Fehlversuche bis zur Sperre | Standard 3. |
@@ -45,6 +46,7 @@ Pro Einrichtung entsteht ein Gerät mit eigener Sperre. Du kannst die Integratio
 - Die Sperre überlebt einen Neustart von Home Assistant (der Timer-Helfer tat das nicht).
 - Während der Sperre wird jedes Einschalten sofort verhindert, auch außerhalb des Zeitfensters.
 - Fehlversuche verfallen nach einer Stunde, statt über Tage stehen zu bleiben.
+- Eltern bekommen eine Nachricht, sobald gesperrt wird, und im Raum wird bei Einschaltversuchen die Sperrzeit angesagt.
 - Reagiert der Fernseher nicht auf das Ausschalten, wird bis zu dreimal im Abstand von 3 Sekunden wiederholt.
 - Ausgeschaltet wird über die Media-Player-Entität, nicht über eine Geräte-ID.
 

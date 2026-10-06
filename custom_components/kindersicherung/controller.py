@@ -6,6 +6,7 @@ import asyncio
 from collections.abc import Callable
 from datetime import datetime, timedelta
 import logging
+import time
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.core import Event, EventStateChangedData, HomeAssistant, callback
@@ -18,6 +19,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import (
     CONF_ACTIONABLE,
+    CONF_ANNOUNCE_LOCK,
     CONF_ATTEMPT_RESET_MINUTES,
     CONF_CONFIRM_ENTITIES,
     CONF_CONFIRM_TIMEOUT,
@@ -32,6 +34,7 @@ from .const import (
     CONF_WEEKDAYS,
     CONFIRM_ACTION_PREFIX,
     DEFAULT_ACTIONABLE,
+    DEFAULT_ANNOUNCE_LOCK,
     DEFAULT_ATTEMPT_RESET_MINUTES,
     DEFAULT_CONFIRM_TIMEOUT,
     DEFAULT_LOCK_MINUTES,
@@ -59,6 +62,7 @@ _LOGGER = logging.getLogger(__name__)
 
 TURN_OFF_TRIES = 3
 TURN_OFF_RETRY_DELAY = 3
+BLOCK_NOTICE_INTERVAL = 60
 
 
 class KindersicherungController:
@@ -76,6 +80,7 @@ class KindersicherungController:
         self._unlock_unsub: Callable[[], None] | None = None
         self._flow_task: asyncio.Task[None] | None = None
         self._confirm_event: asyncio.Event | None = None
+        self._last_block_notice = float("-inf")
 
         self.enabled = True
         self.confirmed = False
@@ -250,6 +255,11 @@ class KindersicherungController:
                     self._async_turn_off([entity_id]),
                     "kindersicherung turn off while locked",
                 )
+                self.entry.async_create_task(
+                    self.hass,
+                    self._async_announce_blocked(),
+                    "kindersicherung announce blocked",
+                )
             return
 
         if old not in POWER_OFF_STATES:
@@ -358,8 +368,20 @@ class KindersicherungController:
                 _LOGGER.warning("Konnte %s nicht zurücksetzen", entity_id, exc_info=True)
 
     async def _async_send_notifications(self) -> None:
+        """Bestätigungsanfrage an alle Ziele (mobile mit Bestätigen-Button)."""
         message = self._opts.get(CONF_MESSAGE) or DEFAULT_MESSAGE
+        await self._async_notify(
+            message, actionable=self._opts.get(CONF_ACTIONABLE, DEFAULT_ACTIONABLE)
+        )
 
+    async def _async_notify(
+        self,
+        message: str,
+        *,
+        actionable: bool = False,
+        entities_only: bool = False,
+    ) -> None:
+        """Sende eine Nachricht an die konfigurierten Ziele."""
         if entities := self._opts.get(CONF_NOTIFY_ENTITIES, []):
             try:
                 await self.hass.services.async_call(
@@ -371,7 +393,9 @@ class KindersicherungController:
             except Exception:  # noqa: BLE001
                 _LOGGER.warning("Benachrichtigung an %s fehlgeschlagen", entities, exc_info=True)
 
-        actionable = self._opts.get(CONF_ACTIONABLE, DEFAULT_ACTIONABLE)
+        if entities_only:
+            return
+
         for service in self._opts.get(CONF_NOTIFY_SERVICES, []):
             service = service.removeprefix("notify.")
             data: dict[str, Any] = {"message": message}
@@ -388,6 +412,32 @@ class KindersicherungController:
                 )
             except Exception:  # noqa: BLE001
                 _LOGGER.warning("Benachrichtigung über notify.%s fehlgeschlagen", service, exc_info=True)
+
+    def _lock_until_text(self) -> str:
+        if self.lock_until is None:
+            return ""
+        return dt_util.as_local(self.lock_until).strftime("%H:%M")
+
+    async def _async_announce_lock(self) -> None:
+        """Eltern informieren, dass gesperrt wurde."""
+        if not self._opts.get(CONF_ANNOUNCE_LOCK, DEFAULT_ANNOUNCE_LOCK):
+            return
+        await self._async_notify(
+            f"Kindersicherung {self.entry.title}: gesperrt bis {self._lock_until_text()} Uhr."
+        )
+
+    async def _async_announce_blocked(self) -> None:
+        """Bei Einschaltversuch während der Sperre kurz ansagen (höchstens einmal pro Minute)."""
+        if not self._opts.get(CONF_ANNOUNCE_LOCK, DEFAULT_ANNOUNCE_LOCK):
+            return
+        now = time.monotonic()
+        if now - self._last_block_notice < BLOCK_NOTICE_INTERVAL:
+            return
+        self._last_block_notice = now
+        await self._async_notify(
+            f"Der Fernseher ist gesperrt bis {self._lock_until_text()} Uhr.",
+            entities_only=True,
+        )
 
     # ------------------------------------------------------------------
     # Fehlversuche und Sperre
@@ -433,6 +483,7 @@ class KindersicherungController:
                 "lock_until": self.lock_until.isoformat(),
             },
         )
+        await self._async_announce_lock()
         await self._async_turn_off(self._active_players())
 
     async def async_unlock(self) -> None:

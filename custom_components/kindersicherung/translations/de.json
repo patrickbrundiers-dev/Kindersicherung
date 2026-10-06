@@ -12,6 +12,7 @@
           "confirm_entities": "Zusätzliche Bestätigungs-Schalter (optional)",
           "message": "Nachricht",
           "actionable": "Bestätigen-Button in der Handy-Benachrichtigung",
+          "announce_lock": "Hinweis bei Sperre",
           "time_start": "Aktiv ab",
           "time_end": "Aktiv bis",
           "weekdays": "Wochentage",
@@ -26,7 +27,8 @@
           "notify_entities": "Entitäten für notify.send_message, z. B. eine Sprachausgabe im Wohnzimmer.",
           "confirm_entities": "Optional: vorhandene input_boolean oder Schalter, die ebenfalls bestätigen können (z. B. dein bisheriger Schalter).",
           "time_start": "Außerhalb des Zeitfensters wird nicht abgefragt. Gleiche Start- und Endzeit bedeutet ganztägig.",
-          "attempt_reset_minutes": "Liegt der letzte Fehlversuch länger zurück, beginnt die Zählung neu."
+          "attempt_reset_minutes": "Liegt der letzte Fehlversuch länger zurück, beginnt die Zählung neu.",
+          "announce_lock": "Bei Sperre eine Nachricht an alle Ziele senden. Wird währenddessen ein Fernseher eingeschaltet, sagen die notify-Entitäten (z. B. Sprachausgabe) einmal pro Minute die Sperrzeit an."
         }
       }
     },
@@ -46,6 +48,7 @@
           "confirm_entities": "Zusätzliche Bestätigungs-Schalter (optional)",
           "message": "Nachricht",
           "actionable": "Bestätigen-Button in der Handy-Benachrichtigung",
+          "announce_lock": "Hinweis bei Sperre",
           "time_start": "Aktiv ab",
           "time_end": "Aktiv bis",
           "weekdays": "Wochentage",
@@ -60,7 +63,8 @@
           "notify_entities": "Entitäten für notify.send_message, z. B. eine Sprachausgabe im Wohnzimmer.",
           "confirm_entities": "Optional: vorhandene input_boolean oder Schalter, die ebenfalls bestätigen können.",
           "time_start": "Außerhalb des Zeitfensters wird nicht abgefragt. Gleiche Start- und Endzeit bedeutet ganztägig.",
-          "attempt_reset_minutes": "Liegt der letzte Fehlversuch länger zurück, beginnt die Zählung neu."
+          "attempt_reset_minutes": "Liegt der letzte Fehlversuch länger zurück, beginnt die Zählung neu.",
+          "announce_lock": "Bei Sperre eine Nachricht an alle Ziele senden. Wird währenddessen ein Fernseher eingeschaltet, sagen die notify-Entitäten (z. B. Sprachausgabe) einmal pro Minute die Sperrzeit an."
         }
       }
     },

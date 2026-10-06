@@ -12,6 +12,7 @@
           "confirm_entities": "Additional confirmation switches (optional)",
           "message": "Message",
           "actionable": "Confirm button in the phone notification",
+          "announce_lock": "Notice on lock",
           "time_start": "Active from",
           "time_end": "Active until",
           "weekdays": "Weekdays",
@@ -26,7 +27,8 @@
           "notify_entities": "Entities for notify.send_message, e.g. a speech output in the living room.",
           "confirm_entities": "Optional: existing input_boolean or switch entities that can also confirm.",
           "time_start": "Outside the time window nothing is asked. Equal start and end means all day.",
-          "attempt_reset_minutes": "If the last failed attempt is older than this, counting starts over."
+          "attempt_reset_minutes": "If the last failed attempt is older than this, counting starts over.",
+          "announce_lock": "Send a message to all targets when locked. If a TV is switched on meanwhile, notify entities (e.g. speech output) announce the lock time, at most once per minute."
         }
       }
     },
@@ -46,6 +48,7 @@
           "confirm_entities": "Additional confirmation switches (optional)",
           "message": "Message",
           "actionable": "Confirm button in the phone notification",
+          "announce_lock": "Notice on lock",
           "time_start": "Active from",
           "time_end": "Active until",
           "weekdays": "Weekdays",
@@ -60,7 +63,8 @@
           "notify_entities": "Entities for notify.send_message, e.g. a speech output in the living room.",
           "confirm_entities": "Optional: existing input_boolean or switch entities that can also confirm.",
           "time_start": "Outside the time window nothing is asked. Equal start and end means all day.",
-          "attempt_reset_minutes": "If the last failed attempt is older than this, counting starts over."
+          "attempt_reset_minutes": "If the last failed attempt is older than this, counting starts over.",
+          "announce_lock": "Send a message to all targets when locked. If a TV is switched on meanwhile, notify entities (e.g. speech output) announce the lock time, at most once per minute."
         }
       }
     },

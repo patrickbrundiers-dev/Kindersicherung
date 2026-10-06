@@ -24,6 +24,7 @@ from homeassistant.helpers.selector import (
 
 from .const import (
     CONF_ACTIONABLE,
+    CONF_ANNOUNCE_LOCK,
     CONF_ATTEMPT_RESET_MINUTES,
     CONF_CONFIRM_ENTITIES,
     CONF_CONFIRM_TIMEOUT,
@@ -38,6 +39,7 @@ from .const import (
     CONF_TIME_START,
     CONF_WEEKDAYS,
     DEFAULT_ACTIONABLE,
+    DEFAULT_ANNOUNCE_LOCK,
     DEFAULT_ATTEMPT_RESET_MINUTES,
     DEFAULT_CONFIRM_TIMEOUT,
     DEFAULT_LOCK_MINUTES,
@@ -120,6 +122,10 @@ def _settings_schema(hass: HomeAssistant, current: dict[str, Any]) -> dict[Any, 
         ): TextSelector(),
         vol.Required(
             CONF_ACTIONABLE, default=current.get(CONF_ACTIONABLE, DEFAULT_ACTIONABLE)
+        ): BooleanSelector(),
+        vol.Required(
+            CONF_ANNOUNCE_LOCK,
+            default=current.get(CONF_ANNOUNCE_LOCK, DEFAULT_ANNOUNCE_LOCK),
         ): BooleanSelector(),
         vol.Required(
             CONF_TIME_START, default=current.get(CONF_TIME_START, DEFAULT_TIME_START)

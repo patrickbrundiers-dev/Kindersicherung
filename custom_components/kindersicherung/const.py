@@ -13,6 +13,7 @@ CONF_NOTIFY_ENTITIES = "notify_entities"
 CONF_NOTIFY_SERVICES = "notify_services"
 CONF_MESSAGE = "message"
 CONF_ACTIONABLE = "actionable"
+CONF_ANNOUNCE_LOCK = "announce_lock"
 CONF_TIME_START = "time_start"
 CONF_TIME_END = "time_end"
 CONF_WEEKDAYS = "weekdays"
@@ -31,6 +32,7 @@ DEFAULT_MAX_ATTEMPTS = 3
 DEFAULT_LOCK_MINUTES = 30
 DEFAULT_ATTEMPT_RESET_MINUTES = 60
 DEFAULT_ACTIONABLE = True
+DEFAULT_ANNOUNCE_LOCK = True
 
 # Zustände, in denen ein Media Player als "aus" gilt.
 INACTIVE_STATES = frozenset({"off", "standby", "unavailable", "unknown"})
