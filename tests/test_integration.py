@@ -116,7 +116,12 @@ async def test_options_flow_updates_options(hass: HomeAssistant) -> None:
 
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],
-        {"media_players": [TV], "max_attempts": 5, "confirm_code": "4711"},
+        {
+            "media_players": [TV],
+            "confirm_timeout": 30,
+            "max_attempts": 5,
+            "confirm_code": "4711",
+        },
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert entry.options["max_attempts"] == 5
