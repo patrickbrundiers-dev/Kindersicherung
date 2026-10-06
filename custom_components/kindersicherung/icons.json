@@ -28,6 +28,18 @@
       },
       "lock_until": {
         "default": "mdi:timer-lock-outline"
+      },
+      "confirmations": {
+        "default": "mdi:check-circle-outline"
+      },
+      "timeouts": {
+        "default": "mdi:timer-off-outline"
+      },
+      "wrong_codes": {
+        "default": "mdi:form-textbox-password"
+      },
+      "locks": {
+        "default": "mdi:lock-clock"
       }
     },
     "button": {

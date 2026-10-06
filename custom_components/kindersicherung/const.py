@@ -23,6 +23,8 @@ CONF_MAX_ATTEMPTS = "max_attempts"
 CONF_LOCK_MINUTES = "lock_minutes"
 CONF_ATTEMPT_RESET_MINUTES = "attempt_reset_minutes"
 
+STAT_KEYS = ("confirmations", "timeouts", "wrong_codes", "locks")
+
 WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
 DEFAULT_MESSAGE = "Kindersicherung in der App bestätigen."

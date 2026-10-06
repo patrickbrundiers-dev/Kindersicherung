@@ -99,6 +99,18 @@
       },
       "lock_until": {
         "name": "Locked until"
+      },
+      "confirmations": {
+        "name": "Confirmations"
+      },
+      "timeouts": {
+        "name": "Timeouts"
+      },
+      "wrong_codes": {
+        "name": "Wrong codes"
+      },
+      "locks": {
+        "name": "Locks"
       }
     },
     "button": {

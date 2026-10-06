@@ -5,11 +5,16 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorStateClass,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import KindersicherungConfigEntry
+from .const import STAT_KEYS
 from .controller import KindersicherungController
 from .entity import KindersicherungEntity
 
@@ -21,7 +26,13 @@ async def async_setup_entry(
 ) -> None:
     """Lege die Sensoren an."""
     controller = entry.runtime_data
-    async_add_entities([AttemptsSensor(controller), LockUntilSensor(controller)])
+    async_add_entities(
+        [
+            AttemptsSensor(controller),
+            LockUntilSensor(controller),
+            *(StatSensor(controller, key) for key in STAT_KEYS),
+        ]
+    )
 
 
 class AttemptsSensor(KindersicherungEntity, SensorEntity):
@@ -62,3 +73,19 @@ class LockUntilSensor(KindersicherungEntity, SensorEntity):
         """Ende der Sperre oder None."""
         controller = self._controller
         return controller.lock_until if controller.locked else None
+
+
+class StatSensor(KindersicherungEntity, SensorEntity):
+    """Gesamtzähler (steigt nur). Im Verlauf pro Tag oder Woche auswertbar."""
+
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+
+    def __init__(self, controller: KindersicherungController, key: str) -> None:
+        """Initialisiere den Zähler."""
+        super().__init__(controller, key)
+        self._key = key
+
+    @property
+    def native_value(self) -> int:
+        """Bisherige Anzahl."""
+        return self._controller.stats[self._key]

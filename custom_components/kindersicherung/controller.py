@@ -52,6 +52,7 @@ from .const import (
     INACTIVE_STATES,
     MOBILE_APP_ACTION_EVENT,
     POWER_OFF_STATES,
+    STAT_KEYS,
     STORAGE_VERSION,
     WEEKDAYS,
 )
@@ -84,7 +85,9 @@ class KindersicherungController:
         self._confirm_event: asyncio.Event | None = None
         self._last_block_notice = float("-inf")
         self._confirm_ok = False
+        self._wrong_code = False
 
+        self.stats: dict[str, int] = dict.fromkeys(STAT_KEYS, 0)
         self.enabled = True
         self.confirmed = False
         self.attempts = 0
@@ -179,6 +182,7 @@ class KindersicherungController:
             {
                 "enabled": self.enabled,
                 "attempts": self.attempts,
+                "stats": dict(self.stats),
                 "last_failure": self.last_failure.isoformat()
                 if self.last_failure
                 else None,
@@ -194,6 +198,9 @@ class KindersicherungController:
         data = await self._store.async_load() or {}
         self.enabled = bool(data.get("enabled", True))
         self.attempts = int(data.get("attempts", 0))
+        saved_stats = data.get("stats") or {}
+        for key in STAT_KEYS:
+            self.stats[key] = int(saved_stats.get(key, 0))
         if raw := data.get("last_failure"):
             self.last_failure = dt_util.parse_datetime(raw)
         if raw := data.get("lock_until"):
@@ -320,6 +327,7 @@ class KindersicherungController:
     async def _async_confirmation_flow(self, trigger_entity: str) -> None:
         self.confirmed = False
         self._confirm_ok = False
+        self._wrong_code = False
         await self._async_reset_external_confirms()
         self._confirm_event = asyncio.Event()
         self._notify_listeners()
@@ -338,6 +346,7 @@ class KindersicherungController:
             self._notify_listeners()
 
         if confirmed:
+            self.stats["confirmations"] += 1
             self.attempts = 0
             self.last_failure = None
             await self._async_save()
@@ -349,7 +358,9 @@ class KindersicherungController:
             return
 
         await self._async_turn_off([trigger_entity])
-        await self._async_register_failure()
+        reason = "wrong_code" if self._wrong_code else "timeout"
+        self.stats["wrong_codes" if self._wrong_code else "timeouts"] += 1
+        await self._async_register_failure(reason)
 
     async def async_confirm(self, via: str = "switch") -> None:
         """Bestätige die Kindersicherung.
@@ -378,6 +389,7 @@ class KindersicherungController:
             await self.async_confirm("code")
             return
         self._confirm_ok = False
+        self._wrong_code = True
         self._confirm_event.set()
 
     async def async_reset_confirmation(self) -> None:
@@ -475,7 +487,7 @@ class KindersicherungController:
     # ------------------------------------------------------------------
     # Fehlversuche und Sperre
     # ------------------------------------------------------------------
-    async def _async_register_failure(self) -> None:
+    async def _async_register_failure(self, reason: str = "timeout") -> None:
         now = dt_util.utcnow()
         self.attempts = attempts_after_failure(
             self.attempts,
@@ -491,6 +503,7 @@ class KindersicherungController:
                 "name": self.entry.title,
                 "attempts": self.attempts,
                 "max_attempts": self.max_attempts,
+                "reason": reason,
             },
         )
         if self.attempts >= self.max_attempts:
@@ -503,6 +516,7 @@ class KindersicherungController:
         """Sperre die Fernseher für `minutes` (Standard: konfigurierte Dauer)."""
         duration = minutes if minutes else self.lock_minutes
         self.lock_until = dt_util.utcnow() + timedelta(minutes=duration)
+        self.stats["locks"] += 1
         self.attempts = 0
         self.last_failure = None
         self._schedule_unlock()

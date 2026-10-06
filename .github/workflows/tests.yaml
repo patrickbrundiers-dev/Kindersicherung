@@ -1,0 +1,26 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Install
+        run: |
+          set -o pipefail
+          pip install -r requirements_test.txt 2>&1 | tee ci.log
+      - name: Test
+        run: |
+          set -o pipefail
+          pytest -q --tb=short -p no:cacheprovider 2>&1 | tee -a ci.log
+      - name: Log als Annotation
+        if: always()
+        run: python .github/scripts/annotate.py

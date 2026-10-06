@@ -37,11 +37,12 @@ Pro Einrichtung entsteht ein Gerät mit eigener Sperre. Du kannst die Integratio
 - `text` **Code eingeben**: nur mit eingestelltem Zahlencode vorhanden. Der Zustand bleibt immer leer.
 - `binary_sensor` **Gesperrt** mit den Attributen `lock_until`, `attempts`, `max_attempts`.
 - `sensor` **Fehlversuche** und **Gesperrt bis** (Zeitstempel).
+- `sensor` **Statistik**: *Bestätigungen*, *Zeitüberschreitungen*, *Falsche Codes* und *Sperren* als Gesamtzähler. Sie speichern Langzeitstatistik, im Dashboard zeigt eine „Statistik-Diagramm“-Karte (Statistic graph card) mit Zeitraum „Woche“ oder „Tag“ die Summen pro Zeitraum.
 - `button` **Entsperren** und **Jetzt sperren**.
 
 ## Ereignisse für eigene Automationen
 
-`kindersicherung_confirmed`, `kindersicherung_failed` (mit `attempts`, `max_attempts`), `kindersicherung_locked` (mit `lock_until`), `kindersicherung_unlocked`. Alle enthalten `entry_id` und `name`.
+`kindersicherung_confirmed`, `kindersicherung_failed` (mit `attempts`, `max_attempts`, `reason` = `timeout` oder `wrong_code`), `kindersicherung_locked` (mit `lock_until`), `kindersicherung_unlocked`. Alle enthalten `entry_id` und `name`.
 
 ## Unterschiede zur bisherigen Automation
 
@@ -55,3 +56,7 @@ Pro Einrichtung entsteht ein Gerät mit eigener Sperre. Du kannst die Integratio
 ## Migration
 
 Nach dem Einrichten und einem Test können die alten Automationen („Kindersicherung TV Wohnzimmer“, „Kindersicherung TV Wohnzimmer 2“, „TV Wohnzimmer: Sperre blockt Einschalten“) und die Helfer `input_boolean.kindersicherung_tv`, `counter.counter_tv_kindersicherung_fehlversuche`, `timer.timer_tv_kindersicherung_sperre` gelöscht werden. Wer den alten Schalter in Dashboards weiter nutzen will, trägt ihn unter „Zusätzliche Bestätigungs-Schalter“ ein.
+
+## Entwicklung
+
+Tests laufen mit `pip install -r requirements_test.txt` und `pytest`. Auf GitHub laufen sie zusammen mit hassfest und der HACS-Prüfung bei jedem Push.

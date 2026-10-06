@@ -99,6 +99,18 @@
       },
       "lock_until": {
         "name": "Gesperrt bis"
+      },
+      "confirmations": {
+        "name": "Bestätigungen"
+      },
+      "timeouts": {
+        "name": "Zeitüberschreitungen"
+      },
+      "wrong_codes": {
+        "name": "Falsche Codes"
+      },
+      "locks": {
+        "name": "Sperren"
       }
     },
     "button": {
