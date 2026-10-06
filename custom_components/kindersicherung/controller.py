@@ -357,9 +357,15 @@ class KindersicherungController:
             )
             return
 
-        await self._async_turn_off([trigger_entity])
+        # Erst zählen (und ggf. sperren), dann ausschalten: ein Fernseher, der
+        # nicht gleich reagiert, darf die Sperre nicht verzögern.
         reason = "wrong_code" if self._wrong_code else "timeout"
         self.stats["wrong_codes" if self._wrong_code else "timeouts"] += 1
+        self.entry.async_create_task(
+            self.hass,
+            self._async_turn_off([trigger_entity]),
+            "kindersicherung turn off after failure",
+        )
         await self._async_register_failure(reason)
 
     async def async_confirm(self, via: str = "switch") -> None:
