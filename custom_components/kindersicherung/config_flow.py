@@ -19,6 +19,8 @@ from homeassistant.helpers.selector import (
     SelectSelectorConfig,
     SelectSelectorMode,
     TextSelector,
+    TextSelectorConfig,
+    TextSelectorType,
     TimeSelector,
 )
 
@@ -26,6 +28,7 @@ from .const import (
     CONF_ACTIONABLE,
     CONF_ANNOUNCE_LOCK,
     CONF_ATTEMPT_RESET_MINUTES,
+    CONF_CONFIRM_CODE,
     CONF_CONFIRM_ENTITIES,
     CONF_CONFIRM_TIMEOUT,
     CONF_LOCK_MINUTES,
@@ -117,6 +120,9 @@ def _settings_schema(hass: HomeAssistant, current: dict[str, Any]) -> dict[Any, 
         ): EntitySelector(
             EntitySelectorConfig(domain=["input_boolean", "switch"], multiple=True)
         ),
+        vol.Optional(
+            CONF_CONFIRM_CODE, description=suggested(CONF_CONFIRM_CODE)
+        ): TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD)),
         vol.Required(
             CONF_MESSAGE, default=current.get(CONF_MESSAGE, DEFAULT_MESSAGE)
         ): TextSelector(),
@@ -170,6 +176,9 @@ def _validate(user_input: dict[str, Any]) -> dict[str, str]:
         errors[CONF_MEDIA_PLAYERS] = "no_media_player"
     if not user_input.get(CONF_WEEKDAYS):
         errors[CONF_WEEKDAYS] = "no_weekday"
+    code = str(user_input.get(CONF_CONFIRM_CODE) or "").strip()
+    if code and not (code.isascii() and code.isdigit() and 4 <= len(code) <= 12):
+        errors[CONF_CONFIRM_CODE] = "invalid_code"
     return errors
 
 
@@ -177,6 +186,9 @@ def _normalize(user_input: dict[str, Any]) -> dict[str, Any]:
     """Zahlen als int speichern, fehlende Listen leer lassen."""
     data = dict(user_input)
     data.pop(CONF_NAME, None)
+    code = str(data.pop(CONF_CONFIRM_CODE, "") or "").strip()
+    if code:
+        data[CONF_CONFIRM_CODE] = code
     for key in INT_KEYS:
         if key in data:
             data[key] = int(data[key])

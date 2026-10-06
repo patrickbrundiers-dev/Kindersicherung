@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable
 from datetime import datetime, timedelta
+import hmac
 import logging
 import time
 from typing import TYPE_CHECKING, Any
@@ -21,6 +22,7 @@ from .const import (
     CONF_ACTIONABLE,
     CONF_ANNOUNCE_LOCK,
     CONF_ATTEMPT_RESET_MINUTES,
+    CONF_CONFIRM_CODE,
     CONF_CONFIRM_ENTITIES,
     CONF_CONFIRM_TIMEOUT,
     CONF_LOCK_MINUTES,
@@ -81,6 +83,7 @@ class KindersicherungController:
         self._flow_task: asyncio.Task[None] | None = None
         self._confirm_event: asyncio.Event | None = None
         self._last_block_notice = float("-inf")
+        self._confirm_ok = False
 
         self.enabled = True
         self.confirmed = False
@@ -109,6 +112,11 @@ class KindersicherungController:
             for entity_id in self._opts.get(CONF_CONFIRM_ENTITIES, [])
             if self._entity_registry_platform(entity_id) != DOMAIN
         ]
+
+    @property
+    def confirm_code(self) -> str:
+        """Eingestellter Zahlencode (leer = nur Schalter/Button)."""
+        return str(self._opts.get(CONF_CONFIRM_CODE) or "").strip()
 
     @property
     def max_attempts(self) -> int:
@@ -285,7 +293,9 @@ class KindersicherungController:
             return
         if self._confirm_event is not None:
             self.entry.async_create_task(
-                self.hass, self.async_confirm(), "kindersicherung external confirm"
+                self.hass,
+                self.async_confirm("external"),
+                "kindersicherung external confirm",
             )
 
     @callback
@@ -293,7 +303,7 @@ class KindersicherungController:
         """Bestätigen-Button einer mobilen Benachrichtigung wurde gedrückt."""
         if event.data.get("action") == self.confirm_action_id:
             self.entry.async_create_task(
-                self.hass, self.async_confirm(), "kindersicherung app confirm"
+                self.hass, self.async_confirm("app"), "kindersicherung app confirm"
             )
 
     def _is_active_now(self) -> bool:
@@ -309,6 +319,7 @@ class KindersicherungController:
     # ------------------------------------------------------------------
     async def _async_confirmation_flow(self, trigger_entity: str) -> None:
         self.confirmed = False
+        self._confirm_ok = False
         await self._async_reset_external_confirms()
         self._confirm_event = asyncio.Event()
         self._notify_listeners()
@@ -319,7 +330,7 @@ class KindersicherungController:
             try:
                 async with asyncio.timeout(self.confirm_timeout):
                     await self._confirm_event.wait()
-                confirmed = True
+                confirmed = self._confirm_ok
             except TimeoutError:
                 confirmed = False
         finally:
@@ -340,12 +351,34 @@ class KindersicherungController:
         await self._async_turn_off([trigger_entity])
         await self._async_register_failure()
 
-    async def async_confirm(self) -> None:
-        """Bestätige die Kindersicherung (Schalter, App-Button, externe Entität)."""
+    async def async_confirm(self, via: str = "switch") -> None:
+        """Bestätige die Kindersicherung.
+
+        `via` ist "switch", "external", "app" oder "code". Ist ein Zahlencode
+        eingestellt, bestätigen nur "code" und "app" (Button in der
+        Benachrichtigung auf dem Handy der Eltern).
+        """
+        if self.confirm_code and via in ("switch", "external"):
+            self.confirmed = False
+            self._notify_listeners()
+            return
         self.confirmed = True
+        self._confirm_ok = True
         if self._confirm_event is not None and not self._confirm_event.is_set():
             self._confirm_event.set()
         self._notify_listeners()
+
+    async def async_submit_code(self, code: str) -> None:
+        """Zahlencode eingegeben: richtig bestätigt, falsch zählt als Fehlversuch."""
+        if not self.confirm_code:
+            return
+        if self._confirm_event is None or self._confirm_event.is_set():
+            return
+        if hmac.compare_digest(code.strip().encode(), self.confirm_code.encode()):
+            await self.async_confirm("code")
+            return
+        self._confirm_ok = False
+        self._confirm_event.set()
 
     async def async_reset_confirmation(self) -> None:
         """Setze die Bestätigung zurück (Schalter ausgeschaltet)."""

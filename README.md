@@ -21,6 +21,7 @@ Pro Einrichtung entsteht ein Gerät mit eigener Sperre. Du kannst die Integratio
 | notify-Dienste | Dienste wie `mobile_app_patrick`. Mit aktivierter Option erscheint ein **Bestätigen-Button** in der Benachrichtigung. |
 | notify-Entitäten | Entitäten für `notify.send_message`, z. B. eine Sprachausgabe im Wohnzimmer. |
 | Zusätzliche Bestätigungs-Schalter | Optional: vorhandene `input_boolean` oder Schalter, die ebenfalls bestätigen können (z. B. dein bisheriger Schalter, damit Dashboards weiter funktionieren). |
+| Zahlencode (optional) | 4 bis 12 Ziffern, den du selbst festlegst. Ist ein Code gesetzt, bestätigst du nur noch über das Feld **Code eingeben** (Entität `text`, z. B. im Dashboard oder in der App) oder den Bestätigen-Button auf dem Handy. Der Bestätigungs-Schalter und zusätzliche Schalter zählen dann nicht mehr. Ein falscher Code beendet die Abfrage sofort, schaltet den Fernseher aus und zählt als Fehlversuch. Der Code liegt im Klartext in der Konfiguration von Home Assistant. |
 | Nachricht | Text der Benachrichtigung. |
 | Hinweis bei Sperre | Bei Sperre geht eine Nachricht an alle Ziele („gesperrt bis 17:42 Uhr“). Wird währenddessen ein Fernseher eingeschaltet, sagen die notify-Entitäten (z. B. Sprachausgabe) die Sperrzeit an, höchstens einmal pro Minute. |
 | Aktiv ab / bis, Wochentage | Zeitfenster der Abfrage. Gleiche Start- und Endzeit bedeutet ganztägig, Start nach Ende ein Fenster über Mitternacht. Der Wochentag bezieht sich auf den aktuellen Tag. Standard: 00:00 bis 19:00 an allen Tagen. |
@@ -32,7 +33,8 @@ Pro Einrichtung entsteht ein Gerät mit eigener Sperre. Du kannst die Integratio
 ## Entitäten (pro Gerät)
 
 - `switch` **Kindersicherung aktiv**: schaltet alles ein oder aus (ersetzt „Automation aus“).
-- `switch` **Bestätigung**: zum Bestätigen einschalten. Das Attribut `waiting` zeigt, ob gerade gewartet wird.
+- `switch` **Bestätigung**: zum Bestätigen einschalten (ohne Zahlencode). Das Attribut `waiting` zeigt, ob gerade gewartet wird.
+- `text` **Code eingeben**: nur mit eingestelltem Zahlencode vorhanden. Der Zustand bleibt immer leer.
 - `binary_sensor` **Gesperrt** mit den Attributen `lock_until`, `attempts`, `max_attempts`.
 - `sensor` **Fehlversuche** und **Gesperrt bis** (Zeitstempel).
 - `button` **Entsperren** und **Jetzt sperren**.

@@ -10,6 +10,7 @@
           "notify_services": "Benachrichtigung über notify-Dienste (z. B. Handy-App)",
           "notify_entities": "Benachrichtigung über notify-Entitäten (z. B. Sprachausgabe)",
           "confirm_entities": "Zusätzliche Bestätigungs-Schalter (optional)",
+          "confirm_code": "Zahlencode (optional)",
           "message": "Nachricht",
           "actionable": "Bestätigen-Button in der Handy-Benachrichtigung",
           "announce_lock": "Hinweis bei Sperre",
@@ -28,13 +29,15 @@
           "confirm_entities": "Optional: vorhandene input_boolean oder Schalter, die ebenfalls bestätigen können (z. B. dein bisheriger Schalter).",
           "time_start": "Außerhalb des Zeitfensters wird nicht abgefragt. Gleiche Start- und Endzeit bedeutet ganztägig.",
           "attempt_reset_minutes": "Liegt der letzte Fehlversuch länger zurück, beginnt die Zählung neu.",
-          "announce_lock": "Bei Sperre eine Nachricht an alle Ziele senden. Wird währenddessen ein Fernseher eingeschaltet, sagen die notify-Entitäten (z. B. Sprachausgabe) einmal pro Minute die Sperrzeit an."
+          "announce_lock": "Bei Sperre eine Nachricht an alle Ziele senden. Wird währenddessen ein Fernseher eingeschaltet, sagen die notify-Entitäten (z. B. Sprachausgabe) einmal pro Minute die Sperrzeit an.",
+          "confirm_code": "4 bis 12 Ziffern. Ist ein Code gesetzt, wird nur noch über das Feld „Code eingeben“ oder den Bestätigen-Button auf dem Handy bestätigt. Schalter und zusätzliche Bestätigungs-Schalter zählen dann nicht mehr. Ein falscher Code zählt als Fehlversuch."
         }
       }
     },
     "error": {
       "no_media_player": "Bitte mindestens einen Fernseher auswählen.",
-      "no_weekday": "Bitte mindestens einen Wochentag auswählen."
+      "no_weekday": "Bitte mindestens einen Wochentag auswählen.",
+      "invalid_code": "Der Code muss aus 4 bis 12 Ziffern bestehen."
     }
   },
   "options": {
@@ -46,6 +49,7 @@
           "notify_services": "Benachrichtigung über notify-Dienste (z. B. Handy-App)",
           "notify_entities": "Benachrichtigung über notify-Entitäten (z. B. Sprachausgabe)",
           "confirm_entities": "Zusätzliche Bestätigungs-Schalter (optional)",
+          "confirm_code": "Zahlencode (optional)",
           "message": "Nachricht",
           "actionable": "Bestätigen-Button in der Handy-Benachrichtigung",
           "announce_lock": "Hinweis bei Sperre",
@@ -64,13 +68,15 @@
           "confirm_entities": "Optional: vorhandene input_boolean oder Schalter, die ebenfalls bestätigen können.",
           "time_start": "Außerhalb des Zeitfensters wird nicht abgefragt. Gleiche Start- und Endzeit bedeutet ganztägig.",
           "attempt_reset_minutes": "Liegt der letzte Fehlversuch länger zurück, beginnt die Zählung neu.",
-          "announce_lock": "Bei Sperre eine Nachricht an alle Ziele senden. Wird währenddessen ein Fernseher eingeschaltet, sagen die notify-Entitäten (z. B. Sprachausgabe) einmal pro Minute die Sperrzeit an."
+          "announce_lock": "Bei Sperre eine Nachricht an alle Ziele senden. Wird währenddessen ein Fernseher eingeschaltet, sagen die notify-Entitäten (z. B. Sprachausgabe) einmal pro Minute die Sperrzeit an.",
+          "confirm_code": "4 bis 12 Ziffern. Ist ein Code gesetzt, wird nur noch über das Feld „Code eingeben“ oder den Bestätigen-Button auf dem Handy bestätigt. Schalter und zusätzliche Bestätigungs-Schalter zählen dann nicht mehr. Ein falscher Code zählt als Fehlversuch."
         }
       }
     },
     "error": {
       "no_media_player": "Bitte mindestens einen Fernseher auswählen.",
-      "no_weekday": "Bitte mindestens einen Wochentag auswählen."
+      "no_weekday": "Bitte mindestens einen Wochentag auswählen.",
+      "invalid_code": "Der Code muss aus 4 bis 12 Ziffern bestehen."
     }
   },
   "entity": {
@@ -101,6 +107,11 @@
       },
       "lock_now": {
         "name": "Jetzt sperren"
+      }
+    },
+    "text": {
+      "code": {
+        "name": "Code eingeben"
       }
     }
   },

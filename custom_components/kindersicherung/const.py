@@ -9,6 +9,7 @@ STORAGE_VERSION = 1
 CONF_NAME = "name"
 CONF_MEDIA_PLAYERS = "media_players"
 CONF_CONFIRM_ENTITIES = "confirm_entities"
+CONF_CONFIRM_CODE = "confirm_code"
 CONF_NOTIFY_ENTITIES = "notify_entities"
 CONF_NOTIFY_SERVICES = "notify_services"
 CONF_MESSAGE = "message"

@@ -13,6 +13,7 @@ PLATFORMS: list[Platform] = [
     Platform.BUTTON,
     Platform.SENSOR,
     Platform.SWITCH,
+    Platform.TEXT,
 ]
 
 type KindersicherungConfigEntry = ConfigEntry[KindersicherungController]
