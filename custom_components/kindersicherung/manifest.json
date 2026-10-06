@@ -1,0 +1,12 @@
+{
+  "domain": "kindersicherung",
+  "name": "Kindersicherung",
+  "codeowners": ["@patrickbrundiers-dev"],
+  "config_flow": true,
+  "documentation": "https://github.com/patrickbrundiers-dev/Kindersicherung",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/patrickbrundiers-dev/Kindersicherung/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

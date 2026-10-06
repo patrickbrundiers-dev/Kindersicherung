@@ -1,0 +1,116 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Kindersicherung einrichten",
+        "description": "Wähle die Fernseher (Media Player) und wie bestätigt werden soll. Alle Einstellungen kannst du später unter „Konfigurieren“ ändern.",
+        "data": {
+          "name": "Name",
+          "media_players": "Fernseher (Media Player)",
+          "notify_services": "Benachrichtigung über notify-Dienste (z. B. Handy-App)",
+          "notify_entities": "Benachrichtigung über notify-Entitäten (z. B. Sprachausgabe)",
+          "confirm_entities": "Zusätzliche Bestätigungs-Schalter (optional)",
+          "message": "Nachricht",
+          "actionable": "Bestätigen-Button in der Handy-Benachrichtigung",
+          "time_start": "Aktiv ab",
+          "time_end": "Aktiv bis",
+          "weekdays": "Wochentage",
+          "confirm_timeout": "Zeit zum Bestätigen",
+          "max_attempts": "Fehlversuche bis zur Sperre",
+          "lock_minutes": "Dauer der Sperre",
+          "attempt_reset_minutes": "Fehlversuche verfallen nach (0 = nie)"
+        },
+        "data_description": {
+          "media_players": "Wird so ein Fernseher eingeschaltet, muss bestätigt werden, sonst wird er wieder ausgeschaltet.",
+          "notify_services": "Dienste wie mobile_app_patrick. Mit Bestätigen-Button, wenn aktiviert.",
+          "notify_entities": "Entitäten für notify.send_message, z. B. eine Sprachausgabe im Wohnzimmer.",
+          "confirm_entities": "Optional: vorhandene input_boolean oder Schalter, die ebenfalls bestätigen können (z. B. dein bisheriger Schalter).",
+          "time_start": "Außerhalb des Zeitfensters wird nicht abgefragt. Gleiche Start- und Endzeit bedeutet ganztägig.",
+          "attempt_reset_minutes": "Liegt der letzte Fehlversuch länger zurück, beginnt die Zählung neu."
+        }
+      }
+    },
+    "error": {
+      "no_media_player": "Bitte mindestens einen Fernseher auswählen.",
+      "no_weekday": "Bitte mindestens einen Wochentag auswählen."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Kindersicherung einstellen",
+        "data": {
+          "media_players": "Fernseher (Media Player)",
+          "notify_services": "Benachrichtigung über notify-Dienste (z. B. Handy-App)",
+          "notify_entities": "Benachrichtigung über notify-Entitäten (z. B. Sprachausgabe)",
+          "confirm_entities": "Zusätzliche Bestätigungs-Schalter (optional)",
+          "message": "Nachricht",
+          "actionable": "Bestätigen-Button in der Handy-Benachrichtigung",
+          "time_start": "Aktiv ab",
+          "time_end": "Aktiv bis",
+          "weekdays": "Wochentage",
+          "confirm_timeout": "Zeit zum Bestätigen",
+          "max_attempts": "Fehlversuche bis zur Sperre",
+          "lock_minutes": "Dauer der Sperre",
+          "attempt_reset_minutes": "Fehlversuche verfallen nach (0 = nie)"
+        },
+        "data_description": {
+          "media_players": "Wird so ein Fernseher eingeschaltet, muss bestätigt werden, sonst wird er wieder ausgeschaltet.",
+          "notify_services": "Dienste wie mobile_app_patrick. Mit Bestätigen-Button, wenn aktiviert.",
+          "notify_entities": "Entitäten für notify.send_message, z. B. eine Sprachausgabe im Wohnzimmer.",
+          "confirm_entities": "Optional: vorhandene input_boolean oder Schalter, die ebenfalls bestätigen können.",
+          "time_start": "Außerhalb des Zeitfensters wird nicht abgefragt. Gleiche Start- und Endzeit bedeutet ganztägig.",
+          "attempt_reset_minutes": "Liegt der letzte Fehlversuch länger zurück, beginnt die Zählung neu."
+        }
+      }
+    },
+    "error": {
+      "no_media_player": "Bitte mindestens einen Fernseher auswählen.",
+      "no_weekday": "Bitte mindestens einen Wochentag auswählen."
+    }
+  },
+  "entity": {
+    "switch": {
+      "enabled": {
+        "name": "Kindersicherung aktiv"
+      },
+      "confirm": {
+        "name": "Bestätigung"
+      }
+    },
+    "binary_sensor": {
+      "locked": {
+        "name": "Gesperrt"
+      }
+    },
+    "sensor": {
+      "attempts": {
+        "name": "Fehlversuche"
+      },
+      "lock_until": {
+        "name": "Gesperrt bis"
+      }
+    },
+    "button": {
+      "unlock": {
+        "name": "Entsperren"
+      },
+      "lock_now": {
+        "name": "Jetzt sperren"
+      }
+    }
+  },
+  "selector": {
+    "weekdays": {
+      "options": {
+        "mon": "Montag",
+        "tue": "Dienstag",
+        "wed": "Mittwoch",
+        "thu": "Donnerstag",
+        "fri": "Freitag",
+        "sat": "Samstag",
+        "sun": "Sonntag"
+      }
+    }
+  }
+}

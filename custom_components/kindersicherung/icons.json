@@ -1,0 +1,19 @@
+{
+  "entity": {
+    "switch": {
+      "enabled": { "default": "mdi:shield-check", "state": { "off": "mdi:shield-off" } },
+      "confirm": { "default": "mdi:check-circle-outline", "state": { "on": "mdi:check-circle" } }
+    },
+    "binary_sensor": {
+      "locked": { "default": "mdi:lock-open-variant-outline", "state": { "on": "mdi:lock-clock" } }
+    },
+    "sensor": {
+      "attempts": { "default": "mdi:alert-circle-outline" },
+      "lock_until": { "default": "mdi:timer-lock-outline" }
+    },
+    "button": {
+      "unlock": { "default": "mdi:lock-open-check-outline" },
+      "lock_now": { "default": "mdi:lock-clock" }
+    }
+  }
+}

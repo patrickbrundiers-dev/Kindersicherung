@@ -1,0 +1,116 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up parental control",
+        "description": "Choose the TVs (media players) and how to confirm. You can change everything later under \"Configure\".",
+        "data": {
+          "name": "Name",
+          "media_players": "TVs (media players)",
+          "notify_services": "Notify services (e.g. phone app)",
+          "notify_entities": "Notify entities (e.g. speech output)",
+          "confirm_entities": "Additional confirmation switches (optional)",
+          "message": "Message",
+          "actionable": "Confirm button in the phone notification",
+          "time_start": "Active from",
+          "time_end": "Active until",
+          "weekdays": "Weekdays",
+          "confirm_timeout": "Time to confirm",
+          "max_attempts": "Failed attempts before lock",
+          "lock_minutes": "Lock duration",
+          "attempt_reset_minutes": "Failed attempts expire after (0 = never)"
+        },
+        "data_description": {
+          "media_players": "When one of these TVs is switched on it must be confirmed, otherwise it is switched off again.",
+          "notify_services": "Services like mobile_app_patrick. Includes a confirm button when enabled.",
+          "notify_entities": "Entities for notify.send_message, e.g. a speech output in the living room.",
+          "confirm_entities": "Optional: existing input_boolean or switch entities that can also confirm.",
+          "time_start": "Outside the time window nothing is asked. Equal start and end means all day.",
+          "attempt_reset_minutes": "If the last failed attempt is older than this, counting starts over."
+        }
+      }
+    },
+    "error": {
+      "no_media_player": "Please select at least one TV.",
+      "no_weekday": "Please select at least one weekday."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configure parental control",
+        "data": {
+          "media_players": "TVs (media players)",
+          "notify_services": "Notify services (e.g. phone app)",
+          "notify_entities": "Notify entities (e.g. speech output)",
+          "confirm_entities": "Additional confirmation switches (optional)",
+          "message": "Message",
+          "actionable": "Confirm button in the phone notification",
+          "time_start": "Active from",
+          "time_end": "Active until",
+          "weekdays": "Weekdays",
+          "confirm_timeout": "Time to confirm",
+          "max_attempts": "Failed attempts before lock",
+          "lock_minutes": "Lock duration",
+          "attempt_reset_minutes": "Failed attempts expire after (0 = never)"
+        },
+        "data_description": {
+          "media_players": "When one of these TVs is switched on it must be confirmed, otherwise it is switched off again.",
+          "notify_services": "Services like mobile_app_patrick. Includes a confirm button when enabled.",
+          "notify_entities": "Entities for notify.send_message, e.g. a speech output in the living room.",
+          "confirm_entities": "Optional: existing input_boolean or switch entities that can also confirm.",
+          "time_start": "Outside the time window nothing is asked. Equal start and end means all day.",
+          "attempt_reset_minutes": "If the last failed attempt is older than this, counting starts over."
+        }
+      }
+    },
+    "error": {
+      "no_media_player": "Please select at least one TV.",
+      "no_weekday": "Please select at least one weekday."
+    }
+  },
+  "entity": {
+    "switch": {
+      "enabled": {
+        "name": "Parental control active"
+      },
+      "confirm": {
+        "name": "Confirmation"
+      }
+    },
+    "binary_sensor": {
+      "locked": {
+        "name": "Locked"
+      }
+    },
+    "sensor": {
+      "attempts": {
+        "name": "Failed attempts"
+      },
+      "lock_until": {
+        "name": "Locked until"
+      }
+    },
+    "button": {
+      "unlock": {
+        "name": "Unlock"
+      },
+      "lock_now": {
+        "name": "Lock now"
+      }
+    }
+  },
+  "selector": {
+    "weekdays": {
+      "options": {
+        "mon": "Monday",
+        "tue": "Tuesday",
+        "wed": "Wednesday",
+        "thu": "Thursday",
+        "fri": "Friday",
+        "sat": "Saturday",
+        "sun": "Sunday"
+      }
+    }
+  }
+}
