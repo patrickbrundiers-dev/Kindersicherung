@@ -3,69 +3,24 @@
     "step": {
       "user": {
         "title": "Set up parental control",
-        "description": "Choose the TVs (media players) and how to confirm. You can change everything later under \"Configure\".",
         "data": {
           "name": "Name",
           "media_players": "TVs (media players)",
           "notify_services": "Notify services (e.g. phone app)",
-          "notify_entities": "Notify entities (e.g. speech output)",
-          "confirm_entities": "Additional confirmation switches (optional)",
           "confirm_code": "Numeric code (optional)",
-          "message": "Message",
-          "actionable": "Confirm button in the phone notification",
-          "announce_lock": "Notice on lock",
           "time_start": "Active from",
           "time_end": "Active until",
           "weekdays": "Weekdays",
-          "confirm_timeout": "Time to confirm",
-          "max_attempts": "Failed attempts before lock",
-          "lock_minutes": "Lock duration",
-          "attempt_reset_minutes": "Failed attempts expire after (0 = never)",
-          "turn_off_at_start": "Turn off when the time window starts"
+          "blocked_apps": "Blocked apps"
         },
+        "description": "The essentials to get started. More settings (second window, holidays, daily limit, warning, lock) are under 'Configure' afterwards.",
         "data_description": {
           "media_players": "When one of these TVs is switched on it must be confirmed, otherwise it is switched off again.",
           "notify_services": "Services like mobile_app_patrick. Includes a confirm button when enabled.",
-          "notify_entities": "Entities for notify.send_message, e.g. a speech output in the living room.",
-          "confirm_entities": "Optional: existing input_boolean or switch entities that can also confirm.",
-          "time_start": "Outside the time window nothing is asked. Equal start and end means all day.",
-          "attempt_reset_minutes": "If the last failed attempt is older than this, counting starts over.",
-          "announce_lock": "Send a message to all targets when locked. If a TV is switched on meanwhile, notify entities (e.g. speech output) announce the lock time, at most once per minute.",
           "confirm_code": "4 to 12 digits. When a code is set, only the 'Enter code' field or the confirm button on the phone confirms. The switch and additional confirmation switches no longer count. A wrong code counts as a failed attempt.",
-          "turn_off_at_start": "TVs still running at \"Active from\" are turned off. Turning one on again requires confirmation."
-        },
-        "sections": {
-          "second_window": {
-            "name": "Second time window",
-            "description": "Optional, e.g. other times on weekends. Off without selected weekdays.",
-            "data": {
-              "time_start_2": "Active from",
-              "time_end_2": "Active until",
-              "weekdays_2": "Weekdays"
-            },
-            "data_description": {
-              "weekdays_2": "As for the first window: past midnight, the morning belongs to the evening before."
-            }
-          },
-          "rules": {
-            "name": "Apps, holidays, warning, daily limit",
-            "data": {
-              "blocked_apps": "Blocked apps",
-              "pause_entities": "Suspend time windows while on (e.g. holidays)",
-              "warn_minutes": "Warning (0 = off)",
-              "daily_limit_minutes": "Daily screen time limit (0 = off)",
-              "app_block_always": "Always close blocked apps",
-              "app_release_minutes": "Duration of an app release"
-            },
-            "data_description": {
-              "blocked_apps": "Part of the app name or app ID, e.g. youtube. The app is closed immediately (home key via the remote entity, otherwise TV off), even after a normal confirmation.",
-              "pause_entities": "While one of these entities is on (calendar with a holiday event, input_boolean, binary_sensor), the time windows do not apply. Daily limit and lock stay.",
-              "warn_minutes": "This many minutes before the time window starts and before the daily limit ends, a message is sent if a TV is on.",
-              "daily_limit_minutes": "Every minute a TV is on counts. Once the limit is reached, TVs are turned off and every power-on needs confirmation until midnight.",
-              "app_block_always": "On: the apps are closed at any time. Off: only in the time window. Release them with the code in the 'Enter code' field or with 'App freigeben' in the phone notification.",
-              "app_release_minutes": "Blocked apps stay allowed this long after a release."
-            }
-          }
+          "time_start": "Outside the time window nothing is asked. Equal start and end means all day.",
+          "weekdays": "Past midnight (e.g. 21:00 to 07:30) the morning belongs to the evening before.",
+          "blocked_apps": "Part of the app name or app ID, e.g. youtube. The app is closed immediately (home key via the remote entity, otherwise TV off), even after a normal confirmation."
         }
       }
     },
@@ -79,67 +34,90 @@
     "step": {
       "init": {
         "title": "Configure parental control",
+        "description": "What do you want to change? Times, daily limit, release duration and app blocking can also be changed on the device page in the dashboard.",
+        "menu_options": {
+          "devices": "TVs and notifications",
+          "schedule": "Time windows, holidays and warning",
+          "apps": "Blocked apps (e.g. YouTube)",
+          "limit": "Daily limit",
+          "confirm": "Code, confirmation and lock"
+        }
+      },
+      "devices": {
+        "title": "TVs and notifications",
         "data": {
           "media_players": "TVs (media players)",
           "notify_services": "Notify services (e.g. phone app)",
           "notify_entities": "Notify entities (e.g. speech output)",
-          "confirm_entities": "Additional confirmation switches (optional)",
-          "confirm_code": "Numeric code (optional)",
           "message": "Message",
           "actionable": "Confirm button in the phone notification",
-          "announce_lock": "Notice on lock",
-          "time_start": "Active from",
-          "time_end": "Active until",
-          "weekdays": "Weekdays",
-          "confirm_timeout": "Time to confirm",
-          "max_attempts": "Failed attempts before lock",
-          "lock_minutes": "Lock duration",
-          "attempt_reset_minutes": "Failed attempts expire after (0 = never)",
-          "turn_off_at_start": "Turn off when the time window starts"
+          "announce_lock": "Notice on lock"
         },
         "data_description": {
           "media_players": "When one of these TVs is switched on it must be confirmed, otherwise it is switched off again.",
           "notify_services": "Services like mobile_app_patrick. Includes a confirm button when enabled.",
           "notify_entities": "Entities for notify.send_message, e.g. a speech output in the living room.",
-          "confirm_entities": "Optional: existing input_boolean or switch entities that can also confirm.",
-          "time_start": "Outside the time window nothing is asked. Equal start and end means all day.",
-          "attempt_reset_minutes": "If the last failed attempt is older than this, counting starts over.",
-          "announce_lock": "Send a message to all targets when locked. If a TV is switched on meanwhile, notify entities (e.g. speech output) announce the lock time, at most once per minute.",
-          "confirm_code": "4 to 12 digits. When a code is set, only the 'Enter code' field or the confirm button on the phone confirms. The switch and additional confirmation switches no longer count. A wrong code counts as a failed attempt.",
-          "turn_off_at_start": "TVs still running at \"Active from\" are turned off. Turning one on again requires confirmation."
+          "announce_lock": "Send a message to all targets when locked. If a TV is switched on meanwhile, notify entities (e.g. speech output) announce the lock time, at most once per minute."
+        }
+      },
+      "schedule": {
+        "title": "Time windows, holidays and warning",
+        "data": {
+          "time_start": "Active from",
+          "time_end": "Active until",
+          "weekdays": "Weekdays",
+          "turn_off_at_start": "Turn off when the time window starts",
+          "warn_minutes": "Warning (0 = off)",
+          "time_start_2": "Second window from",
+          "time_end_2": "Second window until",
+          "weekdays_2": "Weekdays of second window",
+          "pause_entities": "Suspend time windows while on (e.g. holidays)"
         },
-        "sections": {
-          "second_window": {
-            "name": "Second time window",
-            "description": "Optional, e.g. other times on weekends. Off without selected weekdays.",
-            "data": {
-              "time_start_2": "Active from",
-              "time_end_2": "Active until",
-              "weekdays_2": "Weekdays"
-            },
-            "data_description": {
-              "weekdays_2": "As for the first window: past midnight, the morning belongs to the evening before."
-            }
-          },
-          "rules": {
-            "name": "Apps, holidays, warning, daily limit",
-            "data": {
-              "blocked_apps": "Blocked apps",
-              "pause_entities": "Suspend time windows while on (e.g. holidays)",
-              "warn_minutes": "Warning (0 = off)",
-              "daily_limit_minutes": "Daily screen time limit (0 = off)",
-              "app_block_always": "Always close blocked apps",
-              "app_release_minutes": "Duration of an app release"
-            },
-            "data_description": {
-              "blocked_apps": "Part of the app name or app ID, e.g. youtube. The app is closed immediately (home key via the remote entity, otherwise TV off), even after a normal confirmation.",
-              "pause_entities": "While one of these entities is on (calendar with a holiday event, input_boolean, binary_sensor), the time windows do not apply. Daily limit and lock stay.",
-              "warn_minutes": "This many minutes before the time window starts and before the daily limit ends, a message is sent if a TV is on.",
-              "daily_limit_minutes": "Every minute a TV is on counts. Once the limit is reached, TVs are turned off and every power-on needs confirmation until midnight.",
-              "app_block_always": "On: the apps are closed at any time. Off: only in the time window. Release them with the code in the 'Enter code' field or with 'App freigeben' in the phone notification.",
-              "app_release_minutes": "Blocked apps stay allowed this long after a release."
-            }
-          }
+        "data_description": {
+          "time_start": "Outside the time window nothing is asked. Equal start and end means all day.",
+          "weekdays": "Past midnight (e.g. 21:00 to 07:30) the morning belongs to the evening before.",
+          "turn_off_at_start": "TVs still running at \"Active from\" are turned off. Turning one on again requires confirmation.",
+          "warn_minutes": "This many minutes before the time window starts and before the daily limit ends, a message is sent if a TV is on.",
+          "weekdays_2": "Optional, e.g. other times on weekends. Without weekdays the second window is off.",
+          "pause_entities": "While one of these entities is on (calendar with a holiday event, input_boolean, binary_sensor), the time windows do not apply. Daily limit and lock stay."
+        }
+      },
+      "apps": {
+        "title": "Blocked apps (e.g. YouTube)",
+        "data": {
+          "blocked_apps": "Blocked apps",
+          "app_block_always": "Always close blocked apps",
+          "app_release_minutes": "Duration of an app release"
+        },
+        "data_description": {
+          "blocked_apps": "Part of the app name or app ID, e.g. youtube. The app is closed immediately (home key via the remote entity, otherwise TV off), even after a normal confirmation.",
+          "app_block_always": "On: the apps are closed at any time. Off: only in the time window. Release them with the code in the 'Enter code' field or with 'App freigeben' in the phone notification.",
+          "app_release_minutes": "Blocked apps stay allowed this long after a release."
+        }
+      },
+      "limit": {
+        "title": "Daily limit",
+        "data": {
+          "daily_limit_minutes": "Daily screen time limit (0 = off)"
+        },
+        "data_description": {
+          "daily_limit_minutes": "Every minute a TV is on counts. Once the limit is reached, TVs are turned off and every power-on needs confirmation until midnight."
+        }
+      },
+      "confirm": {
+        "title": "Code, confirmation and lock",
+        "data": {
+          "confirm_code": "Numeric code (optional)",
+          "confirm_timeout": "Time to confirm",
+          "max_attempts": "Failed attempts before lock",
+          "lock_minutes": "Lock duration",
+          "attempt_reset_minutes": "Failed attempts expire after (0 = never)",
+          "confirm_entities": "Additional confirmation switches (optional)"
+        },
+        "data_description": {
+          "confirm_code": "4 to 12 digits. When a code is set, only the 'Enter code' field or the confirm button on the phone confirms. The switch and additional confirmation switches no longer count. A wrong code counts as a failed attempt.",
+          "attempt_reset_minutes": "If the last failed attempt is older than this, counting starts over.",
+          "confirm_entities": "Optional: existing input_boolean or switch entities that can also confirm."
         }
       }
     },
@@ -156,6 +134,9 @@
       },
       "confirm": {
         "name": "Confirmation"
+      },
+      "app_block_always": {
+        "name": "Always block apps"
       }
     },
     "binary_sensor": {
@@ -212,6 +193,25 @@
     "text": {
       "code": {
         "name": "Enter code"
+      }
+    },
+    "time": {
+      "window_start": {
+        "name": "Window start"
+      },
+      "window_end": {
+        "name": "Window end"
+      }
+    },
+    "number": {
+      "daily_limit": {
+        "name": "Daily limit"
+      },
+      "app_release": {
+        "name": "App release duration"
+      },
+      "warn": {
+        "name": "Warning"
       }
     }
   },

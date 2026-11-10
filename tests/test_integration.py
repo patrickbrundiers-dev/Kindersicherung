@@ -116,24 +116,93 @@ async def test_options_flow_updates_options(hass: HomeAssistant) -> None:
     entry = await _setup(hass)
 
     result = await hass.config_entries.options.async_init(entry.entry_id)
-    assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "init"
+    assert result["type"] is FlowResultType.MENU
+    assert set(result["menu_options"]) == {"devices", "schedule", "apps", "limit", "confirm"}
 
     result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "confirm"}
+    )
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "confirm"
+    result = await hass.config_entries.options.async_configure(
         result["flow_id"],
-        {
-            "media_players": [TV],
-            "confirm_timeout": 30,
-            "max_attempts": 5,
-            "confirm_code": "4711",
-        },
+        {"confirm_timeout": 30, "max_attempts": 5, "confirm_code": "4711"},
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert entry.options["max_attempts"] == 5
     assert entry.options["confirm_code"] == "4711"
+    # andere Bereiche bleiben unverändert
+    assert entry.options["media_players"] == [TV]
+    assert entry.options["time_end"] == "23:59:59"
     await hass.async_block_till_done()
     # Mit Code gibt es jetzt das Eingabefeld.
     assert _entity(hass, entry, "text", "code")
+
+    # Code wieder entfernen: Feld leer lassen
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "confirm"}
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"confirm_timeout": 30, "max_attempts": 5}
+    )
+    assert "confirm_code" not in entry.options
+    await hass.async_block_till_done()
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_options_schedule_and_apps_steps(hass: HomeAssistant) -> None:
+    entry = await _setup(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "schedule"}
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            "time_start": "21:00:00",
+            "time_end": "07:30:00",
+            "weekdays": ["sun", "mon"],
+            "turn_off_at_start": True,
+            "warn_minutes": 10,
+            "time_start_2": "22:30:00",
+            "time_end_2": "08:00:00",
+            "weekdays_2": ["fri", "sat"],
+            "pause_entities": ["input_boolean.ferien"],
+        },
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.options["weekdays_2"] == ["fri", "sat"]
+    assert entry.options["warn_minutes"] == 10
+    await hass.async_block_till_done()
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "schedule"}
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {"time_start": "21:00:00", "time_end": "07:30:00", "weekdays": [],
+         "turn_off_at_start": True, "warn_minutes": 10,
+         "time_start_2": "22:30:00", "time_end_2": "08:00:00"},
+    )
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"weekdays": "no_weekday"}
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "apps"}
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {"blocked_apps": ["youtube", "netflix"], "app_block_always": True,
+         "app_release_minutes": 30},
+    )
+    assert entry.options["blocked_apps"] == ["youtube", "netflix"]
+    assert entry.options["app_release_minutes"] == 30
+    assert entry.options["weekdays_2"] == ["fri", "sat"]
+    await hass.async_block_till_done()
+    assert await hass.config_entries.async_unload(entry.entry_id)
 
 
 # ------------------------------------------------------------------ Entitäten
@@ -317,39 +386,6 @@ async def test_code_confirms_and_wrong_code_fails(hass: HomeAssistant) -> None:
 
 # ------------------------------------------------- Apps, Pause, Ausnahme, Limit
 YOUTUBE = {"app_id": "com.google.android.youtube.tv", "app_name": "YouTube"}
-
-
-async def test_options_flow_with_sections(hass: HomeAssistant) -> None:
-    entry = await _setup(hass)
-    result = await hass.config_entries.options.async_init(entry.entry_id)
-    options = {
-        k: v for k, v in BASE_OPTIONS.items() if k not in ("confirm_timeout",)
-    }
-    result = await hass.config_entries.options.async_configure(
-        result["flow_id"],
-        {
-            **options,
-            "confirm_timeout": 30,
-            "second_window": {
-                "time_start_2": "22:30:00",
-                "time_end_2": "08:00:00",
-                "weekdays_2": ["fri", "sat"],
-            },
-            "rules": {
-                "blocked_apps": ["youtube"],
-                "pause_entities": ["input_boolean.ferien"],
-                "warn_minutes": 10,
-                "daily_limit_minutes": 120,
-            },
-        },
-    )
-    assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert entry.options["weekdays_2"] == ["fri", "sat"]
-    assert entry.options["blocked_apps"] == ["youtube"]
-    assert entry.options["daily_limit_minutes"] == 120
-    assert "rules" not in entry.options
-    await hass.async_block_till_done()
-    assert await hass.config_entries.async_unload(entry.entry_id)
 
 
 async def test_blocked_app_without_remote_turns_tv_off(hass: HomeAssistant) -> None:
@@ -552,4 +588,34 @@ async def test_old_entries_block_apps_only_in_window(hass: HomeAssistant) -> Non
     await hass.async_block_till_done()
     await asyncio.sleep(0.05)
     assert not turn_off
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_dashboard_entities_change_options_without_reload(hass: HomeAssistant) -> None:
+
+    entry = await _setup(hass, daily_limit_minutes=0)
+    controller = entry.runtime_data
+    start = _entity(hass, entry, "time", "window_start")
+    limit = _entity(hass, entry, "number", "daily_limit")
+    always = _entity(hass, entry, "switch", "app_block_always")
+
+    await hass.services.async_call(
+        "time", "set_value", {"entity_id": start, "time": "21:00:00"}, blocking=True
+    )
+    await hass.services.async_call(
+        "number", "set_value", {"entity_id": limit, "value": 90}, blocking=True
+    )
+    await hass.services.async_call(
+        "switch", "turn_on", {"entity_id": always}, blocking=True
+    )
+    await hass.async_block_till_done()
+    assert entry.options["time_start"] == "21:00:00"
+    assert entry.options["daily_limit_minutes"] == 90
+    assert entry.options["app_block_always"] is True
+    # derselbe Controller: kein Neuladen
+    assert entry.runtime_data is controller
+    assert hass.states.get(start).state == "21:00:00"
+    assert hass.states.get(limit).state == "90.0"
+    assert hass.states.get(always).state == "on"
+    assert controller.windows[0][0] == "21:00:00"
     assert await hass.config_entries.async_unload(entry.entry_id)

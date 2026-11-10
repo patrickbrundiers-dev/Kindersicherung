@@ -5,10 +5,12 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.components.switch import SwitchEntity
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import KindersicherungConfigEntry
+from .const import CONF_APP_BLOCK_ALWAYS
 from .controller import KindersicherungController
 from .entity import KindersicherungEntity
 
@@ -24,6 +26,7 @@ async def async_setup_entry(
         [
             EnabledSwitch(controller),
             ConfirmSwitch(controller),
+            AppBlockAlwaysSwitch(controller),
         ]
     )
 
@@ -73,3 +76,26 @@ class ConfirmSwitch(KindersicherungEntity, SwitchEntity):
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Setze die Bestätigung zurück."""
         await self._controller.async_reset_confirmation()
+
+
+class AppBlockAlwaysSwitch(KindersicherungEntity, SwitchEntity):
+    """Gesperrte Apps immer beenden (an) oder nur im Zeitfenster (aus)."""
+
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(self, controller: KindersicherungController) -> None:
+        """Initialisiere den Schalter."""
+        super().__init__(controller, "app_block_always")
+
+    @property
+    def is_on(self) -> bool:
+        """Werden gesperrte Apps immer beendet?"""
+        return self._controller.app_block_always
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Immer beenden."""
+        await self._controller.async_set_option(CONF_APP_BLOCK_ALWAYS, True)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Nur im Zeitfenster beenden."""
+        await self._controller.async_set_option(CONF_APP_BLOCK_ALWAYS, False)
