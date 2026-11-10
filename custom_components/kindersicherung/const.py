@@ -18,6 +18,18 @@ CONF_ANNOUNCE_LOCK = "announce_lock"
 CONF_TIME_START = "time_start"
 CONF_TIME_END = "time_end"
 CONF_WEEKDAYS = "weekdays"
+CONF_TURN_OFF_AT_START = "turn_off_at_start"
+CONF_TIME_START_2 = "time_start_2"
+CONF_TIME_END_2 = "time_end_2"
+CONF_WEEKDAYS_2 = "weekdays_2"
+CONF_BLOCKED_APPS = "blocked_apps"
+CONF_PAUSE_ENTITIES = "pause_entities"
+CONF_WARN_MINUTES = "warn_minutes"
+CONF_DAILY_LIMIT_MINUTES = "daily_limit_minutes"
+
+# Abschnitte im Editor (werden beim Speichern flach abgelegt).
+SECTION_SECOND_WINDOW = "second_window"
+SECTION_RULES = "rules"
 CONF_CONFIRM_TIMEOUT = "confirm_timeout"
 CONF_MAX_ATTEMPTS = "max_attempts"
 CONF_LOCK_MINUTES = "lock_minutes"
@@ -36,6 +48,14 @@ DEFAULT_LOCK_MINUTES = 30
 DEFAULT_ATTEMPT_RESET_MINUTES = 60
 DEFAULT_ACTIONABLE = True
 DEFAULT_ANNOUNCE_LOCK = True
+DEFAULT_TURN_OFF_AT_START = False
+DEFAULT_TIME_START_2 = "22:00:00"
+DEFAULT_TIME_END_2 = "08:00:00"
+DEFAULT_WARN_MINUTES = 0
+DEFAULT_DAILY_LIMIT_MINUTES = 0
+
+# Vorschläge für gesperrte Apps; Teil des App-Namens oder der App-ID genügt.
+APP_SUGGESTIONS = ["youtube", "netflix", "disney", "amazon", "twitch", "tiktok"]
 
 # Zustände, in denen ein Media Player als "aus" gilt.
 INACTIVE_STATES = frozenset({"off", "standby", "unavailable", "unknown"})

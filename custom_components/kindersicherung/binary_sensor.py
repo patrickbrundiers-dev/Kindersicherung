@@ -19,7 +19,10 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Lege den Sensor an."""
-    async_add_entities([LockedBinarySensor(entry.runtime_data)])
+    controller = entry.runtime_data
+    async_add_entities(
+        [LockedBinarySensor(controller), RestrictedBinarySensor(controller)]
+    )
 
 
 class LockedBinarySensor(KindersicherungEntity, BinarySensorEntity):
@@ -44,4 +47,28 @@ class LockedBinarySensor(KindersicherungEntity, BinarySensorEntity):
             else None,
             "attempts": controller.attempts,
             "max_attempts": controller.max_attempts,
+        }
+
+
+class RestrictedBinarySensor(KindersicherungEntity, BinarySensorEntity):
+    """An, solange die Regeln gelten (Zeitfenster oder Tageslimit)."""
+
+    def __init__(self, controller: KindersicherungController) -> None:
+        """Initialisiere den Sensor."""
+        super().__init__(controller, "restricted")
+
+    @property
+    def is_on(self) -> bool:
+        """Gelten die Regeln gerade?"""
+        return self._controller.restricted
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Warum die Regeln gelten oder nicht."""
+        controller = self._controller
+        return {
+            "in_window": controller.in_window,
+            "paused": controller.paused,
+            "exception_active": controller.exception_active,
+            "limit_reached": controller.limit_reached,
         }

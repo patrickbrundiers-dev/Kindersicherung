@@ -20,17 +20,48 @@
           "confirm_timeout": "Zeit zum Bestätigen",
           "max_attempts": "Fehlversuche bis zur Sperre",
           "lock_minutes": "Dauer der Sperre",
-          "attempt_reset_minutes": "Fehlversuche verfallen nach (0 = nie)"
+          "attempt_reset_minutes": "Fehlversuche verfallen nach (0 = nie)",
+          "turn_off_at_start": "Bei Beginn des Zeitfensters ausschalten"
         },
         "data_description": {
           "media_players": "Wird so ein Fernseher eingeschaltet, muss bestätigt werden, sonst wird er wieder ausgeschaltet.",
           "notify_services": "Dienste wie mobile_app_patrick. Mit Bestätigen-Button, wenn aktiviert.",
           "notify_entities": "Entitäten für notify.send_message, z. B. eine Sprachausgabe im Wohnzimmer.",
           "confirm_entities": "Optional: vorhandene input_boolean oder Schalter, die ebenfalls bestätigen können (z. B. dein bisheriger Schalter).",
-          "time_start": "Außerhalb des Zeitfensters wird nicht abgefragt. Gleiche Start- und Endzeit bedeutet ganztägig.",
+          "time_start": "Außerhalb des Zeitfensters wird nicht abgefragt. Gleiche Start- und Endzeit bedeutet ganztägig. Liegt das Ende vor dem Start (z. B. 21:00 bis 07:30), gilt der Morgen noch zum Wochentag des Abends.",
           "attempt_reset_minutes": "Liegt der letzte Fehlversuch länger zurück, beginnt die Zählung neu.",
           "announce_lock": "Bei Sperre eine Nachricht an alle Ziele senden. Wird währenddessen ein Fernseher eingeschaltet, sagen die notify-Entitäten (z. B. Sprachausgabe) einmal pro Minute die Sperrzeit an.",
-          "confirm_code": "4 bis 12 Ziffern. Ist ein Code gesetzt, wird nur noch über das Feld „Code eingeben“ oder den Bestätigen-Button auf dem Handy bestätigt. Schalter und zusätzliche Bestätigungs-Schalter zählen dann nicht mehr. Ein falscher Code zählt als Fehlversuch."
+          "confirm_code": "4 bis 12 Ziffern. Ist ein Code gesetzt, wird nur noch über das Feld „Code eingeben“ oder den Bestätigen-Button auf dem Handy bestätigt. Schalter und zusätzliche Bestätigungs-Schalter zählen dann nicht mehr. Ein falscher Code zählt als Fehlversuch.",
+          "turn_off_at_start": "Läuft zu „Aktiv ab“ noch ein Fernseher, wird er ausgeschaltet. Wer ihn danach wieder einschaltet, muss bestätigen."
+        },
+        "sections": {
+          "second_window": {
+            "name": "Zweites Zeitfenster",
+            "description": "Optional, z. B. andere Zeiten am Wochenende. Ohne gewählte Wochentage ist es aus.",
+            "data": {
+              "time_start_2": "Aktiv ab",
+              "time_end_2": "Aktiv bis",
+              "weekdays_2": "Wochentage"
+            },
+            "data_description": {
+              "weekdays_2": "Wie beim ersten Fenster: Über Mitternacht zählt der Morgen zum Abend davor."
+            }
+          },
+          "rules": {
+            "name": "Apps, Ferien, Vorwarnung, Tageslimit",
+            "data": {
+              "blocked_apps": "Gesperrte Apps im Zeitfenster",
+              "pause_entities": "Zeitfenster aussetzen, wenn an (z. B. Ferien)",
+              "warn_minutes": "Vorwarnung (0 = aus)",
+              "daily_limit_minutes": "Tageslimit Bildschirmzeit (0 = aus)"
+            },
+            "data_description": {
+              "blocked_apps": "Teil des App-Namens oder der App-ID, z. B. youtube. Im Zeitfenster wird die App auch nach einer Bestätigung sofort beendet (Home-Taste über die Fernbedienungs-Entität, sonst Fernseher aus).",
+              "pause_entities": "Ist eine dieser Entitäten an (Kalender mit Ferien-Termin, input_boolean, binary_sensor), gelten die Zeitfenster nicht. Tageslimit und Sperre bleiben.",
+              "warn_minutes": "So viele Minuten vor Beginn des Zeitfensters und vor Ende des Tageslimits kommt eine Nachricht, wenn ein Fernseher läuft.",
+              "daily_limit_minutes": "Gezählt wird jede Minute, in der ein Fernseher an ist. Ist das Limit erreicht, wird ausgeschaltet und bis Mitternacht muss jedes Einschalten bestätigt werden."
+            }
+          }
         }
       }
     },
@@ -59,17 +90,48 @@
           "confirm_timeout": "Zeit zum Bestätigen",
           "max_attempts": "Fehlversuche bis zur Sperre",
           "lock_minutes": "Dauer der Sperre",
-          "attempt_reset_minutes": "Fehlversuche verfallen nach (0 = nie)"
+          "attempt_reset_minutes": "Fehlversuche verfallen nach (0 = nie)",
+          "turn_off_at_start": "Bei Beginn des Zeitfensters ausschalten"
         },
         "data_description": {
           "media_players": "Wird so ein Fernseher eingeschaltet, muss bestätigt werden, sonst wird er wieder ausgeschaltet.",
           "notify_services": "Dienste wie mobile_app_patrick. Mit Bestätigen-Button, wenn aktiviert.",
           "notify_entities": "Entitäten für notify.send_message, z. B. eine Sprachausgabe im Wohnzimmer.",
           "confirm_entities": "Optional: vorhandene input_boolean oder Schalter, die ebenfalls bestätigen können.",
-          "time_start": "Außerhalb des Zeitfensters wird nicht abgefragt. Gleiche Start- und Endzeit bedeutet ganztägig.",
+          "time_start": "Außerhalb des Zeitfensters wird nicht abgefragt. Gleiche Start- und Endzeit bedeutet ganztägig. Liegt das Ende vor dem Start (z. B. 21:00 bis 07:30), gilt der Morgen noch zum Wochentag des Abends.",
           "attempt_reset_minutes": "Liegt der letzte Fehlversuch länger zurück, beginnt die Zählung neu.",
           "announce_lock": "Bei Sperre eine Nachricht an alle Ziele senden. Wird währenddessen ein Fernseher eingeschaltet, sagen die notify-Entitäten (z. B. Sprachausgabe) einmal pro Minute die Sperrzeit an.",
-          "confirm_code": "4 bis 12 Ziffern. Ist ein Code gesetzt, wird nur noch über das Feld „Code eingeben“ oder den Bestätigen-Button auf dem Handy bestätigt. Schalter und zusätzliche Bestätigungs-Schalter zählen dann nicht mehr. Ein falscher Code zählt als Fehlversuch."
+          "confirm_code": "4 bis 12 Ziffern. Ist ein Code gesetzt, wird nur noch über das Feld „Code eingeben“ oder den Bestätigen-Button auf dem Handy bestätigt. Schalter und zusätzliche Bestätigungs-Schalter zählen dann nicht mehr. Ein falscher Code zählt als Fehlversuch.",
+          "turn_off_at_start": "Läuft zu „Aktiv ab“ noch ein Fernseher, wird er ausgeschaltet. Wer ihn danach wieder einschaltet, muss bestätigen."
+        },
+        "sections": {
+          "second_window": {
+            "name": "Zweites Zeitfenster",
+            "description": "Optional, z. B. andere Zeiten am Wochenende. Ohne gewählte Wochentage ist es aus.",
+            "data": {
+              "time_start_2": "Aktiv ab",
+              "time_end_2": "Aktiv bis",
+              "weekdays_2": "Wochentage"
+            },
+            "data_description": {
+              "weekdays_2": "Wie beim ersten Fenster: Über Mitternacht zählt der Morgen zum Abend davor."
+            }
+          },
+          "rules": {
+            "name": "Apps, Ferien, Vorwarnung, Tageslimit",
+            "data": {
+              "blocked_apps": "Gesperrte Apps im Zeitfenster",
+              "pause_entities": "Zeitfenster aussetzen, wenn an (z. B. Ferien)",
+              "warn_minutes": "Vorwarnung (0 = aus)",
+              "daily_limit_minutes": "Tageslimit Bildschirmzeit (0 = aus)"
+            },
+            "data_description": {
+              "blocked_apps": "Teil des App-Namens oder der App-ID, z. B. youtube. Im Zeitfenster wird die App auch nach einer Bestätigung sofort beendet (Home-Taste über die Fernbedienungs-Entität, sonst Fernseher aus).",
+              "pause_entities": "Ist eine dieser Entitäten an (Kalender mit Ferien-Termin, input_boolean, binary_sensor), gelten die Zeitfenster nicht. Tageslimit und Sperre bleiben.",
+              "warn_minutes": "So viele Minuten vor Beginn des Zeitfensters und vor Ende des Tageslimits kommt eine Nachricht, wenn ein Fernseher läuft.",
+              "daily_limit_minutes": "Gezählt wird jede Minute, in der ein Fernseher an ist. Ist das Limit erreicht, wird ausgeschaltet und bis Mitternacht muss jedes Einschalten bestätigt werden."
+            }
+          }
         }
       }
     },
@@ -91,6 +153,9 @@
     "binary_sensor": {
       "locked": {
         "name": "Gesperrt"
+      },
+      "restricted": {
+        "name": "Regeln aktiv"
       }
     },
     "sensor": {
@@ -111,6 +176,12 @@
       },
       "locks": {
         "name": "Sperren"
+      },
+      "screen_time": {
+        "name": "Bildschirmzeit heute"
+      },
+      "exception_until": {
+        "name": "Ausnahme bis"
       }
     },
     "button": {
@@ -119,6 +190,12 @@
       },
       "lock_now": {
         "name": "Jetzt sperren"
+      },
+      "allow_today": {
+        "name": "Heute erlauben"
+      },
+      "end_exception": {
+        "name": "Ausnahme beenden"
       }
     },
     "text": {
