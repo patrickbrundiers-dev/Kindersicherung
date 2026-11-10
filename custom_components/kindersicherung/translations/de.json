@@ -51,13 +51,15 @@
           "notify_entities": "Benachrichtigung über notify-Entitäten (z. B. Sprachausgabe)",
           "message": "Nachricht",
           "actionable": "Bestätigen-Button in der Handy-Benachrichtigung",
-          "announce_lock": "Hinweis bei Sperre"
+          "announce_lock": "Hinweis bei Sperre",
+          "presence_entities": "Nur wenn zu Hause (optional)"
         },
         "data_description": {
           "media_players": "Wird so ein Fernseher eingeschaltet, muss bestätigt werden, sonst wird er wieder ausgeschaltet.",
           "notify_services": "Dienste wie mobile_app_patrick. Mit Bestätigen-Button, wenn aktiviert.",
           "notify_entities": "Entitäten für notify.send_message, z. B. eine Sprachausgabe im Wohnzimmer.",
-          "announce_lock": "Bei Sperre eine Nachricht an alle Ziele senden. Wird währenddessen ein Fernseher eingeschaltet, sagen die notify-Entitäten (z. B. Sprachausgabe) einmal pro Minute die Sperrzeit an."
+          "announce_lock": "Bei Sperre eine Nachricht an alle Ziele senden. Wird währenddessen ein Fernseher eingeschaltet, sagen die notify-Entitäten (z. B. Sprachausgabe) einmal pro Minute die Sperrzeit an.",
+          "presence_entities": "Ist keine dieser Personen zu Hause, wird jeder eingeschaltete Fernseher sofort ausgeschaltet. „Heute erlauben“ hebt das auf. Unbekannt oder nicht verfügbar zählt als zu Hause."
         }
       },
       "schedule": {
@@ -198,6 +200,7 @@
         "state": {
           "off": "Aus",
           "locked": "Gesperrt",
+          "away": "Niemand zu Hause",
           "exception": "Ausnahme",
           "limit": "Tageslimit erreicht",
           "bonus": "Bonuszeit",

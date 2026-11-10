@@ -26,6 +26,7 @@ REASONS = {
     "window_start": "Beginn der Sperrzeit",
     "blocked_app": "gesperrte App",
     "confirmation_expired": "Freigabe abgelaufen",
+    "away": "niemand zu Hause",
 }
 
 

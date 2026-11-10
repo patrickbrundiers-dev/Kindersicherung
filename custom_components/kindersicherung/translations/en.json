@@ -51,13 +51,15 @@
           "notify_entities": "Notify entities (e.g. speech output)",
           "message": "Message",
           "actionable": "Confirm button in the phone notification",
-          "announce_lock": "Notice on lock"
+          "announce_lock": "Notice on lock",
+          "presence_entities": "Only when at home (optional)"
         },
         "data_description": {
           "media_players": "When one of these TVs is switched on it must be confirmed, otherwise it is switched off again.",
           "notify_services": "Services like mobile_app_patrick. Includes a confirm button when enabled.",
           "notify_entities": "Entities for notify.send_message, e.g. a speech output in the living room.",
-          "announce_lock": "Send a message to all targets when locked. If a TV is switched on meanwhile, notify entities (e.g. speech output) announce the lock time, at most once per minute."
+          "announce_lock": "Send a message to all targets when locked. If a TV is switched on meanwhile, notify entities (e.g. speech output) announce the lock time, at most once per minute.",
+          "presence_entities": "If none of these persons is at home, any TV that is turned on is turned off right away. \"Allow today\" overrides this. Unknown or unavailable counts as home."
         }
       },
       "schedule": {
@@ -198,6 +200,7 @@
         "state": {
           "off": "Off",
           "locked": "Locked",
+          "away": "Nobody home",
           "exception": "Exception",
           "limit": "Daily limit reached",
           "bonus": "Bonus time",

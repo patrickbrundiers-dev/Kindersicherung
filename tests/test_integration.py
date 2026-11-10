@@ -1109,3 +1109,44 @@ async def test_options_new_fields(hass: HomeAssistant) -> None:
     assert entry.options["workday_entity"] == "binary_sensor.arbeitstag"
     await hass.async_block_till_done()
     assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_tv_only_when_someone_is_home(hass: HomeAssistant) -> None:
+    turn_off = async_mock_service(hass, "media_player", "turn_off")
+    events = []
+    hass.bus.async_listen("kindersicherung_action", events.append)
+    hass.states.async_set("person.kind", "not_home")
+    entry = await _setup(hass, weekdays=[], presence_entities=["person.kind"])
+    controller = entry.runtime_data
+    status = _entity(hass, entry, "sensor", "status")
+    assert hass.states.get(status).state == "away"
+
+    await _tv_on(hass)
+    assert turn_off
+    assert any(e.data["reason"] == "away" for e in events)
+
+    # zu Hause: Fernseher bleibt an
+    turn_off.clear()
+    hass.states.async_set(TV, "off")
+    hass.states.async_set("person.kind", "home")
+    await hass.async_block_till_done()
+    await _tv_on(hass)
+    await asyncio.sleep(0.3)
+    assert not turn_off
+    assert hass.states.get(status).state == "free"
+
+    # geht weg, während der Fernseher läuft: aus
+    hass.states.async_set("person.kind", "not_home")
+    await hass.async_block_till_done()
+    await asyncio.sleep(0.05)
+    assert turn_off
+
+    # unbekannt zählt als zu Hause, Ausnahme hebt es auf
+    hass.states.async_set("person.kind", "unknown")
+    await hass.async_block_till_done()
+    assert not controller.away
+    hass.states.async_set("person.kind", "not_home")
+    await controller.async_allow_today()
+    await hass.async_block_till_done()
+    assert hass.states.get(status).state == "exception"
+    assert await hass.config_entries.async_unload(entry.entry_id)
