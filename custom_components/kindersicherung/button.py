@@ -24,6 +24,7 @@ async def async_setup_entry(
             LockNowButton(controller),
             AllowTodayButton(controller),
             EndExceptionButton(controller),
+            PenaltyButton(controller),
         ]
     )
 
@@ -74,3 +75,15 @@ class EndExceptionButton(KindersicherungEntity, ButtonEntity):
     async def async_press(self) -> None:
         """Ausnahme beenden."""
         await self._controller.async_end_exception()
+
+
+class PenaltyButton(KindersicherungEntity, ButtonEntity):
+    """Strafe: sperrt die Fernseher für die eingestellte Dauer (Standard 24 Std.)."""
+
+    def __init__(self, controller: KindersicherungController) -> None:
+        """Initialisiere den Button."""
+        super().__init__(controller, "penalty")
+
+    async def async_press(self) -> None:
+        """Strafe auslösen."""
+        await self._controller.async_penalty()

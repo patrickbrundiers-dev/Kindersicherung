@@ -25,7 +25,7 @@ Unter **Konfigurieren** öffnet sich ein Menü mit fünf Bereichen, die jeweils 
 4. **Tageslimit**
 5. **Code, Bestätigung und Sperre**
 
-Die häufigsten Werte lassen sich außerdem direkt auf der Geräteseite oder im Dashboard ändern, ohne den Editor zu öffnen: **Sperre ab** und **Sperre bis** (`time`), **Tageslimit**, **Dauer App-Freigabe** und **Vorwarnung** (`number`, Schieberegler) sowie **Apps immer sperren** (`switch`). Diese Änderungen wirken sofort, ohne die Integration neu zu laden.
+Die häufigsten Werte lassen sich außerdem direkt auf der Geräteseite oder im Dashboard ändern, ohne den Editor zu öffnen: **Sperre ab** und **Sperre bis** (`time`), **Tageslimit**, **Dauer App-Freigabe** und **Vorwarnung**, **Dauer Strafe** (`number`, Schieberegler) sowie **Apps immer sperren** (`switch`). Diese Änderungen wirken sofort, ohne die Integration neu zu laden.
 
 | Einstellung | Bedeutung |
 |---|---|
@@ -49,6 +49,7 @@ Die häufigsten Werte lassen sich außerdem direkt auf der Geräteseite oder im 
 | Fehlversuche bis zur Sperre | Standard 3. |
 | Dauer der Sperre | Standard 30 Minuten. |
 | Fehlversuche verfallen nach | Standard 60 Minuten, 0 bedeutet nie. |
+| Dauer der Strafe | Wie lange der Button **Strafe** sperrt. Standard 24 Stunden, 1 bis 168. |
 
 ## Entitäten (pro Gerät)
 
@@ -59,6 +60,7 @@ Die häufigsten Werte lassen sich außerdem direkt auf der Geräteseite oder im 
 - `sensor` **Fehlversuche** und **Gesperrt bis** (Zeitstempel).
 - `sensor` **Statistik**: *Bestätigungen*, *Zeitüberschreitungen*, *Falsche Codes* und *Sperren* als Gesamtzähler. Sie speichern Langzeitstatistik, im Dashboard zeigt eine „Statistik-Diagramm“-Karte (Statistic graph card) mit Zeitraum „Woche“ oder „Tag“ die Summen pro Zeitraum.
 - `button` **Entsperren** und **Jetzt sperren**.
+- `button` **Strafe**: sperrt alle Fernseher des Eintrags für die eingestellte Dauer (Standard 24 Stunden), auch außerhalb des Zeitfensters. Jedes Einschalten wird sofort rückgängig gemacht, eine Ausnahme oder App-Freigabe endet. Eine längere laufende Sperre wird nicht verkürzt. Nur **Entsperren** hebt die Strafe vorher auf. Die Sperre übersteht einen Neustart.
 - `button` **Heute erlauben**: setzt Zeitfenster, App-Sperre und Tageslimit bis Mitternacht aus, bzw. bis zum Ende eines Fensters, das heute noch läuft oder beginnt (bei 21:00 bis 07:30 also bis zum nächsten Morgen). **Ausnahme beenden** hebt das wieder auf, ebenso eine App-Freigabe. Eine Sperre nach Fehlversuchen bleibt bestehen.
 - `sensor` **Ausnahme bis** und **Apps freigegeben bis** (Zeitstempel) und **Bildschirmzeit heute** (Minuten, mit `daily_limit` und `limit_reached`).
 - `binary_sensor` **Regeln aktiv**: an, solange Zeitfenster oder Tageslimit gelten (Attribute `in_window`, `paused`, `exception_active`, `limit_reached`).

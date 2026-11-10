@@ -31,6 +31,7 @@ from .const import (
     CONF_BLOCKED_APPS,
     CONF_DAILY_LIMIT_MINUTES,
     CONF_PAUSE_ENTITIES,
+    CONF_PENALTY_HOURS,
     CONF_TIME_END_2,
     CONF_TIME_START_2,
     CONF_WARN_MINUTES,
@@ -39,6 +40,7 @@ from .const import (
     DEFAULT_APP_RELEASE_MINUTES,
     DEFAULT_BLOCKED_APPS,
     DEFAULT_DAILY_LIMIT_MINUTES,
+    DEFAULT_PENALTY_HOURS,
     DEFAULT_TIME_END_2,
     DEFAULT_TIME_START_2,
     DEFAULT_WARN_MINUTES,
@@ -92,6 +94,7 @@ INT_KEYS = (
     CONF_WARN_MINUTES,
     CONF_DAILY_LIMIT_MINUTES,
     CONF_APP_RELEASE_MINUTES,
+    CONF_PENALTY_HOURS,
 )
 
 DEFAULTS: dict[str, Any] = {
@@ -119,6 +122,7 @@ DEFAULTS: dict[str, Any] = {
     CONF_MAX_ATTEMPTS: DEFAULT_MAX_ATTEMPTS,
     CONF_LOCK_MINUTES: DEFAULT_LOCK_MINUTES,
     CONF_ATTEMPT_RESET_MINUTES: DEFAULT_ATTEMPT_RESET_MINUTES,
+    CONF_PENALTY_HOURS: DEFAULT_PENALTY_HOURS,
 }
 
 # Bereiche im Optionen-Menü.
@@ -150,6 +154,7 @@ STEPS: dict[str, tuple[str, ...]] = {
         CONF_MAX_ATTEMPTS,
         CONF_LOCK_MINUTES,
         CONF_ATTEMPT_RESET_MINUTES,
+        CONF_PENALTY_HOURS,
         CONF_CONFIRM_ENTITIES,
     ),
 }
@@ -322,6 +327,7 @@ def _fields(
         CONF_CONFIRM_TIMEOUT: lambda: (required(CONF_CONFIRM_TIMEOUT), _number(5, 600, "s")),
         CONF_MAX_ATTEMPTS: lambda: (required(CONF_MAX_ATTEMPTS), _slider(1, 10, 1, "")),
         CONF_LOCK_MINUTES: lambda: (required(CONF_LOCK_MINUTES), _number(1, 1440, "min")),
+        CONF_PENALTY_HOURS: lambda: (required(CONF_PENALTY_HOURS), _slider(1, 168, 1, "h")),
         CONF_ATTEMPT_RESET_MINUTES: lambda: (
             required(CONF_ATTEMPT_RESET_MINUTES),
             _number(0, 1440, "min"),

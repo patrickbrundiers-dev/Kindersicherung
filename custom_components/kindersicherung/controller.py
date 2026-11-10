@@ -26,12 +26,14 @@ from .const import (
     CONF_BLOCKED_APPS,
     CONF_DAILY_LIMIT_MINUTES,
     CONF_PAUSE_ENTITIES,
+    CONF_PENALTY_HOURS,
     CONF_TIME_END_2,
     CONF_TIME_START_2,
     CONF_WARN_MINUTES,
     CONF_WEEKDAYS_2,
     DEFAULT_APP_RELEASE_MINUTES,
     DEFAULT_DAILY_LIMIT_MINUTES,
+    DEFAULT_PENALTY_HOURS,
     DEFAULT_TIME_END_2,
     DEFAULT_TIME_START_2,
     DEFAULT_WARN_MINUTES,
@@ -821,7 +823,10 @@ class KindersicherungController:
     def _lock_until_text(self) -> str:
         if self.lock_until is None:
             return ""
-        return dt_util.as_local(self.lock_until).strftime("%H:%M")
+        local = dt_util.as_local(self.lock_until)
+        if local.date() != dt_util.now().date():
+            return local.strftime("%d.%m. %H:%M")
+        return local.strftime("%H:%M")
 
     async def _async_announce_lock(self) -> None:
         """Eltern informieren, dass gesperrt wurde."""
@@ -871,6 +876,28 @@ class KindersicherungController:
             return
         await self._async_save()
         self._notify_listeners()
+
+    @property
+    def penalty_hours(self) -> int:
+        """Dauer der Strafe in Stunden."""
+        return int(
+            self._opts.get(CONF_PENALTY_HOURS, DEFAULT_PENALTY_HOURS)
+            or DEFAULT_PENALTY_HOURS
+        )
+
+    async def async_penalty(self) -> None:
+        """Strafe: Fernseher für die eingestellte Zeit komplett sperren.
+
+        Eine laufende längere Sperre wird nicht verkürzt. Ausnahme und
+        App-Freigabe enden.
+        """
+        minutes = self.penalty_hours * 60
+        until = dt_util.utcnow() + timedelta(minutes=minutes)
+        if self.lock_until is not None and self.lock_until > until:
+            return
+        self.exception_until = None
+        self.app_release_until = None
+        await self.async_lock(minutes)
 
     async def async_lock(self, minutes: int | None = None) -> None:
         """Sperre die Fernseher für `minutes` (Standard: konfigurierte Dauer)."""

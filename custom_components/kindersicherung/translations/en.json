@@ -40,7 +40,7 @@
           "schedule": "Time windows, holidays and warning",
           "apps": "Blocked apps (e.g. YouTube)",
           "limit": "Daily limit",
-          "confirm": "Code, confirmation and lock"
+          "confirm": "Code, confirmation, lock and penalty"
         }
       },
       "devices": {
@@ -105,19 +105,21 @@
         }
       },
       "confirm": {
-        "title": "Code, confirmation and lock",
+        "title": "Code, confirmation, lock and penalty",
         "data": {
           "confirm_code": "Numeric code (optional)",
           "confirm_timeout": "Time to confirm",
           "max_attempts": "Failed attempts before lock",
           "lock_minutes": "Lock duration",
           "attempt_reset_minutes": "Failed attempts expire after (0 = never)",
-          "confirm_entities": "Additional confirmation switches (optional)"
+          "confirm_entities": "Additional confirmation switches (optional)",
+          "penalty_hours": "Penalty duration"
         },
         "data_description": {
           "confirm_code": "4 to 12 digits. When a code is set, only the 'Enter code' field or the confirm button on the phone confirms. The switch and additional confirmation switches no longer count. A wrong code counts as a failed attempt.",
           "attempt_reset_minutes": "If the last failed attempt is older than this, counting starts over.",
-          "confirm_entities": "Optional: existing input_boolean or switch entities that can also confirm."
+          "confirm_entities": "Optional: existing input_boolean or switch entities that can also confirm.",
+          "penalty_hours": "The 'Penalty' button locks all TVs of this entry completely for this long. Only 'Unlock' ends it earlier."
         }
       }
     },
@@ -188,6 +190,9 @@
       },
       "end_exception": {
         "name": "End exception"
+      },
+      "penalty": {
+        "name": "Penalty"
       }
     },
     "text": {
@@ -212,6 +217,9 @@
       },
       "warn": {
         "name": "Warning"
+      },
+      "penalty_hours": {
+        "name": "Penalty duration"
       }
     }
   },

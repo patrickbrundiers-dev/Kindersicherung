@@ -75,6 +75,9 @@
       },
       "end_exception": {
         "default": "mdi:calendar-remove"
+      },
+      "penalty": {
+        "default": "mdi:gavel"
       }
     },
     "text": {
@@ -99,6 +102,9 @@
       },
       "warn": {
         "default": "mdi:bell-alert-outline"
+      },
+      "penalty_hours": {
+        "default": "mdi:timer-lock-outline"
       }
     }
   }
