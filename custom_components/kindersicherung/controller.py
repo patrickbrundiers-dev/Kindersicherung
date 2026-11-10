@@ -15,7 +15,7 @@ import hmac
 import logging
 import time
 from collections.abc import Callable, Iterable
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.core import Event, EventStateChangedData, HomeAssistant, callback
@@ -31,22 +31,29 @@ from . import devices
 from .const import (
     APP_ACTION_PREFIX,
     CONF_ACTIONABLE,
+    CONF_ALLOWED_APPS,
     CONF_ANNOUNCE_LOCK,
     CONF_APP_BLOCK_ALWAYS,
     CONF_APP_RELEASE_MINUTES,
     CONF_AT_START,
     CONF_ATTEMPT_RESET_MINUTES,
     CONF_BLOCKED_APPS,
+    CONF_BONUS_MINUTES,
     CONF_CONFIRM_CODE,
     CONF_CONFIRM_ENTITIES,
     CONF_CONFIRM_TIMEOUT,
+    CONF_CONFIRM_VALID_MINUTES,
+    CONF_DAILY_LIMIT_HOLIDAY,
     CONF_DAILY_LIMIT_MINUTES,
+    CONF_DAILY_LIMIT_WEEKEND,
+    CONF_HOLIDAY_CALENDARS,
     CONF_LOCK_MINUTES,
     CONF_MAX_ATTEMPTS,
     CONF_MEDIA_PLAYERS,
     CONF_MESSAGE,
     CONF_PAUSE_ENTITIES,
     CONF_PENALTY_HOURS,
+    CONF_SCHOOL_NIGHTS,
     CONF_TIME_END,
     CONF_TIME_END_2,
     CONF_TIME_START,
@@ -55,12 +62,15 @@ from .const import (
     CONF_WARN_MINUTES,
     CONF_WEEKDAYS,
     CONF_WEEKDAYS_2,
+    CONF_WORKDAY_ENTITY,
     CONFIRM_ACTION_PREFIX,
     DEFAULT_ACTIONABLE,
     DEFAULT_ANNOUNCE_LOCK,
     DEFAULT_APP_RELEASE_MINUTES,
     DEFAULT_ATTEMPT_RESET_MINUTES,
+    DEFAULT_BONUS_MINUTES,
     DEFAULT_CONFIRM_TIMEOUT,
+    DEFAULT_CONFIRM_VALID_MINUTES,
     DEFAULT_DAILY_LIMIT_MINUTES,
     DEFAULT_LOCK_MINUTES,
     DEFAULT_MAX_ATTEMPTS,
@@ -96,11 +106,15 @@ from .logic import (
     RuleState,
     Session,
     Window,
+    app_blocked,
     app_matches,
     attempts_after_failure,
+    daily_limit_for,
     evaluate,
     exception_until,
+    holiday_dates,
     is_in_any_window,
+    school_window_day,
     session_action,
     starts_at,
     update_session,
@@ -122,6 +136,9 @@ SESSION_GAP = timedelta(minutes=2)
 RETRY_DELAY = timedelta(seconds=60)
 # Nach der Home-Taste so lange warten, dann prüfen, ob die App noch läuft.
 APP_CHECK_DELAY = 5.0
+# Schultage und Ferien so oft neu laden (Kalender können sich ändern).
+SCHOOL_REFRESH = timedelta(minutes=30)
+SCHOOL_DAYS_AHEAD = 4
 
 
 
@@ -164,6 +181,13 @@ class KindersicherungController:
         self.screen_time_date: str | None = None
         self.screen_time_minutes = 0
         self.limit_reached = False
+        self.bonus_minutes_today = 0
+        self.bonus_until: datetime | None = None
+        # Schultage (B): Datum -> Schultag?, Ferientage, letzter Abruf
+        self._school_days: dict[date, bool] = {}
+        self._holidays: set[date] = set()
+        self._school_loaded: datetime | None = None
+        self._school_task: asyncio.Task[None] | None = None
 
     # ------------------------------------------------------------------
     # Konfiguration
@@ -210,12 +234,15 @@ class KindersicherungController:
     @property
     def windows(self) -> list[Window]:
         """Zeitfenster (erstes immer, zweites nur mit gewählten Wochentagen)."""
+        start = self._opts.get(CONF_TIME_START, DEFAULT_TIME_START)
+        days: Any = list(self._opts.get(CONF_WEEKDAYS, WEEKDAYS))
+        if self.school_nights:
+            # Nur vor Schultagen (bzw. an Schultagen, wenn das Fenster vormittags beginnt).
+            def days(day: date, start: str = start) -> bool:
+                return self.is_school_day(school_window_day(start, day))
+
         result: list[Window] = [
-            (
-                self._opts.get(CONF_TIME_START, DEFAULT_TIME_START),
-                self._opts.get(CONF_TIME_END, DEFAULT_TIME_END),
-                list(self._opts.get(CONF_WEEKDAYS, WEEKDAYS)),
-            )
+            (start, self._opts.get(CONF_TIME_END, DEFAULT_TIME_END), days)
         ]
         if days_2 := list(self._opts.get(CONF_WEEKDAYS_2) or []):
             result.append(
@@ -252,11 +279,73 @@ class KindersicherungController:
         return int(self._opts.get(CONF_WARN_MINUTES, DEFAULT_WARN_MINUTES) or 0)
 
     @property
-    def daily_limit(self) -> int:
-        """Bildschirmzeit pro Tag in Minuten (0 = aus)."""
+    def school_nights(self) -> bool:
+        """Erstes Zeitfenster nur vor Schultagen?"""
+        return bool(self._opts.get(CONF_SCHOOL_NIGHTS, False))
+
+    @property
+    def workday_entity(self) -> str | None:
+        """Werktag-Sensor (Workday-Integration)."""
+        return self._opts.get(CONF_WORKDAY_ENTITY) or None
+
+    @property
+    def holiday_calendars(self) -> list[str]:
+        """Kalender mit Schulferien."""
+        return list(self._opts.get(CONF_HOLIDAY_CALENDARS) or [])
+
+    def is_school_day(self, day: date) -> bool:
+        """Schultag: Werktag laut Sensor (sonst Mo bis Fr) und nicht in den Ferien."""
+        if day in self._holidays:
+            return False
+        if day in self._school_days:
+            return self._school_days[day]
+        return day.weekday() < 5
+
+    @property
+    def holiday_today(self) -> bool:
+        """Ferien heute (Ferienkalender oder Pause-Entität an)?"""
+        return dt_util.now().date() in self._holidays or self.paused
+
+    @staticmethod
+    def _optional_int(value: Any) -> int | None:
+        return None if value is None or value == "" else int(value)
+
+    @property
+    def base_daily_limit(self) -> int:
+        """Eingestelltes Tageslimit für heute ohne Bonus (0 = aus)."""
+        today = dt_util.now().date()
         return int(
-            self._opts.get(CONF_DAILY_LIMIT_MINUTES, DEFAULT_DAILY_LIMIT_MINUTES) or 0
+            daily_limit_for(
+                int(self._opts.get(CONF_DAILY_LIMIT_MINUTES, DEFAULT_DAILY_LIMIT_MINUTES) or 0),
+                self._optional_int(self._opts.get(CONF_DAILY_LIMIT_WEEKEND)),
+                self._optional_int(self._opts.get(CONF_DAILY_LIMIT_HOLIDAY)),
+                today.weekday() >= 5,
+                self.holiday_today,
+            )
         )
+
+    @property
+    def daily_limit(self) -> int:
+        """Bildschirmzeit heute in Minuten inklusive Bonus (0 = aus)."""
+        base = self.base_daily_limit
+        return base + self.bonus_minutes_today if base > 0 else 0
+
+    @property
+    def bonus_minutes(self) -> int:
+        """Minuten pro Druck auf „Bonuszeit“."""
+        return int(self._opts.get(CONF_BONUS_MINUTES, DEFAULT_BONUS_MINUTES) or DEFAULT_BONUS_MINUTES)
+
+    @property
+    def confirm_valid_minutes(self) -> int:
+        """Wie lange eine Bestätigung gilt (0 = bis der Fernseher aus ist)."""
+        return int(
+            self._opts.get(CONF_CONFIRM_VALID_MINUTES, DEFAULT_CONFIRM_VALID_MINUTES) or 0
+        )
+
+    @property
+    def allowed_apps(self) -> list[str]:
+        """Apps, die nie gesperrt werden (z. B. tvkids)."""
+        return list(self._opts.get(CONF_ALLOWED_APPS) or [])
 
     @property
     def app_block_always(self) -> bool:
@@ -351,6 +440,11 @@ class KindersicherungController:
         return is_in_any_window(dt_util.now(), self.windows)
 
     @property
+    def bonus_active(self) -> bool:
+        """Läuft gerade Bonuszeit in der Sperrzeit?"""
+        return self.bonus_until is not None and self.bonus_until > dt_util.utcnow()
+
+    @property
     def app_released(self) -> bool:
         """Sind gesperrte Apps gerade per Code oder Handy freigegeben?"""
         return (
@@ -366,6 +460,7 @@ class KindersicherungController:
                 enabled=self.enabled,
                 locked=self.locked,
                 exception_active=self.exception_active,
+                bonus_active=self.bonus_active,
                 in_window=self.in_window,
                 paused=self.paused,
                 limit_reached=self.limit_reached and self.daily_limit > 0,
@@ -434,6 +529,8 @@ class KindersicherungController:
             "screen_time_date": self.screen_time_date,
             "screen_time_minutes": self.screen_time_minutes,
             "limit_reached": self.limit_reached,
+            "bonus_minutes_today": self.bonus_minutes_today,
+            "bonus_until": iso(self.bonus_until),
             "sessions": {
                 entity_id: session.as_dict()
                 for entity_id, session in self.sessions.items()
@@ -451,6 +548,15 @@ class KindersicherungController:
             "in_window": self.in_window,
             "paused": self.paused,
             "at_start": self.at_start,
+            "daily_limit": self.daily_limit,
+            "holiday_today": self.holiday_today,
+            "school_days": {
+                day.isoformat(): self.is_school_day(day)
+                for day in (
+                    dt_util.now().date() + timedelta(days=offset)
+                    for offset in range(-1, SCHOOL_DAYS_AHEAD)
+                )
+            },
             "waiting_for_confirmation": self.waiting_for_confirmation,
             "flow_players": sorted(self._flow_players),
             "players": {
@@ -486,6 +592,9 @@ class KindersicherungController:
         self.screen_time_date = data.get("screen_time_date")
         self.screen_time_minutes = int(data.get("screen_time_minutes") or 0)
         self.limit_reached = bool(data.get("limit_reached", False))
+        self.bonus_minutes_today = int(data.get("bonus_minutes_today") or 0)
+        if raw := data.get("bonus_until"):
+            self.bonus_until = dt_util.parse_datetime(raw)
         for entity_id, raw in (data.get("sessions") or {}).items():
             if entity_id in self.media_players and isinstance(raw, dict):
                 try:
@@ -529,6 +638,8 @@ class KindersicherungController:
         self._unsubs.append(
             async_track_time_change(self.hass, self._async_minute_tick, second=0)
         )
+        if self.school_nights or self.holiday_calendars:
+            self._async_refresh_school_days()
         # Läuft beim Start schon ein Fernseher, wird er gleich geprüft.
         self._async_enforce()
 
@@ -541,8 +652,9 @@ class KindersicherungController:
         if self._unlock_unsub is not None:
             self._unlock_unsub()
             self._unlock_unsub = None
-        if self._flow_task is not None and not self._flow_task.done():
-            self._flow_task.cancel()
+        for task in (self._flow_task, self._school_task):
+            if task is not None and not task.done():
+                task.cancel()
         self._listeners.clear()
         # Bildschirmzeit und Sitzungen nicht verlieren.
         self._store.async_delay_save(self._data, 0)
@@ -719,7 +831,7 @@ class KindersicherungController:
         return f"{attrs.get('app_id') or ''} {attrs.get('app_name') or ''}".strip()
 
     def _runs_blocked_app(self, state: Any) -> bool:
-        return app_matches(self._app_of(state), self.blocked_apps)
+        return app_blocked(self._app_of(state), self.blocked_apps, self.allowed_apps)
 
     @callback
     def _async_start_close_app(self, entity_id: str) -> None:
@@ -790,6 +902,7 @@ class KindersicherungController:
         self.screen_time_date = today
         self.screen_time_minutes = 0
         self.limit_reached = False
+        self.bonus_minutes_today = 0
         return True
 
     @callback
@@ -801,6 +914,12 @@ class KindersicherungController:
     async def async_minute_tick(self, now: datetime) -> None:
         """Einmal pro Minute: zählen, warnen, durchsetzen."""
         changed = self._roll_screen_time_day(now)
+        if (self.school_nights or self.holiday_calendars) and (
+            changed
+            or self._school_loaded is None
+            or dt_util.utcnow() - self._school_loaded >= SCHOOL_REFRESH
+        ):
+            self._async_refresh_school_days()
         active = self._active_players()
         if self._watching_players(active):
             self.screen_time_minutes += 1
@@ -816,6 +935,7 @@ class KindersicherungController:
                 await self._async_check_limit(active)
                 if not self.exception_active and not self.paused:
                     await self._async_warn_window_start(now, active)
+                await self._async_warn_confirmation_end(now, active)
             self._async_enforce()
         self._notify_listeners()
 
@@ -858,6 +978,125 @@ class KindersicherungController:
         return [e for e in self.media_players if devices.is_active(self.hass, e)]
 
     # ------------------------------------------------------------------
+    # Schultage und Ferien
+    # ------------------------------------------------------------------
+    @callback
+    def _async_refresh_school_days(self) -> None:
+        if self._school_task is not None and not self._school_task.done():
+            return
+        self._school_loaded = dt_util.utcnow()
+        self._school_task = self.entry.async_create_background_task(
+            self.hass, self._async_load_school_days(), "kindersicherung school days"
+        )
+
+    async def _async_load_school_days(self) -> None:
+        """Werktage (Workday-Sensor) und Ferien (Kalender) für die nächsten Tage laden."""
+        today = dt_util.now().date()
+        first = today - timedelta(days=1)
+        days = [first + timedelta(days=offset) for offset in range(SCHOOL_DAYS_AHEAD + 2)]
+        school_days: dict[date, bool] = {}
+        if workday := self.workday_entity:
+            for day in days:
+                try:
+                    response = await self.hass.services.async_call(
+                        "workday",
+                        "check_date",
+                        {"entity_id": workday, "check_date": day},
+                        blocking=True,
+                        return_response=True,
+                    )
+                    school_days[day] = bool((response or {})[workday]["workday"])
+                except Exception:
+                    _LOGGER.warning(
+                        "Werktag für %s über %s nicht abrufbar", day, workday, exc_info=True
+                    )
+                    break
+        holidays: set[date] = set()
+        for calendar in self.holiday_calendars:
+            start = dt_util.start_of_local_day(first)
+            end = start + timedelta(days=len(days))
+            try:
+                response = await self.hass.services.async_call(
+                    "calendar",
+                    "get_events",
+                    {
+                        "entity_id": calendar,
+                        "start_date_time": start,
+                        "end_date_time": end,
+                    },
+                    blocking=True,
+                    return_response=True,
+                )
+            except Exception:
+                _LOGGER.warning("Ferien aus %s nicht abrufbar", calendar, exc_info=True)
+                continue
+            events = []
+            for event in (response or {}).get(calendar, {}).get("events", []):
+                begin = _parse_event_time(event.get("start"))
+                finish = _parse_event_time(event.get("end"))
+                if begin is not None and finish is not None:
+                    events.append((begin, finish))
+            holidays |= holiday_dates(events, first, len(days))
+        self._school_days = school_days
+        self._holidays = holidays
+        self._async_enforce()
+        self._notify_listeners()
+
+    # ------------------------------------------------------------------
+    # Bonuszeit und Ablauf von Freigaben
+    # ------------------------------------------------------------------
+    async def async_bonus(self) -> None:
+        """Bonuszeit: Tageslimit und laufende Sperrzeit um ein paar Minuten verlängern."""
+        minutes = self.bonus_minutes
+        now = dt_util.utcnow()
+        parts = []
+        if self.base_daily_limit > 0:
+            self.bonus_minutes_today += minutes
+            if self.limit_reached and self.screen_time_minutes < self.daily_limit:
+                self.limit_reached = False
+            parts.append("Tageslimit")
+        if self.in_window and not self.paused and not self.exception_active:
+            start = self.bonus_until if self.bonus_active else now
+            self.bonus_until = start + timedelta(minutes=minutes)
+            parts.append(
+                f"Fernsehen bis {dt_util.as_local(self.bonus_until).strftime('%H:%M')} Uhr"
+            )
+        await self._async_save()
+        self._async_enforce()
+        self._notify_listeners()
+        await self.notifier.async_send(
+            f"Kindersicherung {self.entry.title}: {minutes} Minuten Bonus"
+            + (f" ({', '.join(parts)})." if parts else ".")
+        )
+
+    async def _async_warn_confirmation_end(self, now: datetime, active: list[str]) -> None:
+        """Vorwarnung, bevor eine Bestätigung mit Ablaufzeit endet."""
+        if not self.warn_minutes or not active:
+            return
+        target = now.replace(second=0, microsecond=0) + timedelta(minutes=self.warn_minutes)
+        if (
+            self.bonus_active
+            and self.bonus_until is not None
+            and dt_util.as_local(self.bonus_until).replace(second=0, microsecond=0) == target
+        ):
+            await self.notifier.async_send(
+                f"In {self.warn_minutes} Minuten endet die Bonuszeit."
+            )
+        for entity_id in active:
+            session = self.sessions.get(entity_id)
+            if (
+                session is not None
+                and session.status == SESSION_CONFIRMED
+                and session.confirmed_until is not None
+                and dt_util.as_local(session.confirmed_until).replace(second=0, microsecond=0)
+                == target
+            ):
+                await self.notifier.async_send(
+                    f"In {self.warn_minutes} Minuten endet die Fernseh-Freigabe."
+                )
+                return
+
+    # ------------------------------------------------------------------
     # Ausnahme „heute erlauben“
     # ------------------------------------------------------------------
     async def async_allow_today(self) -> None:
@@ -876,6 +1115,7 @@ class KindersicherungController:
         """Ausnahme und App-Freigabe beenden."""
         self.exception_until = None
         self.app_release_until = None
+        self.bonus_until = None
         await self._async_save()
         self._async_enforce()
         self._notify_listeners()
@@ -923,9 +1163,12 @@ class KindersicherungController:
             self._notify_listeners()
 
         if confirmed:
+            valid = self.confirm_valid_minutes
+            until = dt_util.utcnow() + timedelta(minutes=valid) if valid else None
             for entity_id in players:
                 session = self.sessions.setdefault(entity_id, Session())
                 session.status = SESSION_CONFIRMED
+                session.confirmed_until = until
                 session.retry_after = None
             self.stats["confirmations"] += 1
             self.attempts = 0
@@ -1085,6 +1328,7 @@ class KindersicherungController:
             return
         self.exception_until = None
         self.app_release_until = None
+        self.bonus_until = None
         await self.async_lock(minutes)
 
     async def async_lock(self, minutes: int | None = None) -> None:
@@ -1148,3 +1392,15 @@ class KindersicherungController:
         self.entry.async_create_task(
             self.hass, self.async_unlock(), "kindersicherung unlock"
         )
+
+
+def _parse_event_time(value: Any) -> datetime | date | None:
+    """Beginn/Ende eines Kalendertermins (Datum bei ganztägigen Terminen)."""
+    if isinstance(value, datetime | date):
+        return dt_util.as_local(value) if isinstance(value, datetime) else value
+    if not isinstance(value, str):
+        return None
+    if len(value) == 10:
+        return dt_util.parse_date(value)
+    parsed = dt_util.parse_datetime(value)
+    return dt_util.as_local(parsed) if parsed else None

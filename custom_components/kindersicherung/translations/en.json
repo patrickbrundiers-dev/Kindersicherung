@@ -71,7 +71,10 @@
           "time_start_2": "Second window from",
           "time_end_2": "Second window until",
           "weekdays_2": "Weekdays of second window",
-          "pause_entities": "Suspend time windows while on (e.g. holidays)"
+          "pause_entities": "Suspend time windows while on (e.g. holidays)",
+          "school_nights_only": "Only before school days",
+          "workday_entity": "Workday sensor (optional)",
+          "holiday_calendars": "School holiday calendars (optional)"
         },
         "data_description": {
           "time_start": "Outside the time window nothing is asked. Equal start and end means all day.",
@@ -79,7 +82,10 @@
           "at_window_start": "Applies at \"Active from\" and when an exception or pause ends. Turning a TV on again requires confirmation.",
           "warn_minutes": "This many minutes before the time window starts and before the daily limit ends, a message is sent if a TV is on.",
           "weekdays_2": "Optional, e.g. other times on weekends. Without weekdays the second window is off.",
-          "pause_entities": "While one of these entities is on (calendar with a holiday event, input_boolean, binary_sensor), the time windows do not apply. Daily limit and lock stay."
+          "pause_entities": "While one of these entities is on (calendar with a holiday event, input_boolean, binary_sensor), the time windows do not apply. Daily limit and lock stay.",
+          "school_nights_only": "The first window applies only on the evening before a school day (starting at noon or later) or on school days (starting in the morning). The weekdays above are ignored. School day: workday according to the sensor (Monday to Friday without one) and not during holidays.",
+          "workday_entity": "Sensor of the Workday integration. Each day is checked individually, so public holidays count correctly.",
+          "holiday_calendars": "Every event in these calendars counts as holidays: no school day and the holiday daily limit."
         }
       },
       "apps": {
@@ -87,21 +93,29 @@
         "data": {
           "blocked_apps": "Blocked apps",
           "app_block_always": "Always close blocked apps",
-          "app_release_minutes": "Duration of an app release"
+          "app_release_minutes": "Duration of an app release",
+          "allowed_apps": "Allowed apps (exceptions)"
         },
         "data_description": {
           "blocked_apps": "Part of the app name or app ID, e.g. youtube. The app is closed immediately (home key via the remote entity, otherwise TV off), even after a normal confirmation.",
           "app_block_always": "On: the apps are closed at any time. Off: only in the time window. Release them with the code in the 'Enter code' field or with 'App freigeben' in the phone notification.",
-          "app_release_minutes": "Blocked apps stay allowed this long after a release."
+          "app_release_minutes": "Blocked apps stay allowed this long after a release.",
+          "allowed_apps": "Apps matching these entries are never closed, e.g. tvkids for YouTube Kids while youtube is blocked."
         }
       },
       "limit": {
         "title": "Daily limit",
         "data": {
-          "daily_limit_minutes": "Daily screen time limit (0 = off)"
+          "daily_limit_minutes": "Daily screen time limit (0 = off)",
+          "daily_limit_weekend": "Daily limit Saturday and Sunday (optional)",
+          "daily_limit_holiday": "Daily limit during holidays (optional)",
+          "bonus_minutes": "Bonus time per press"
         },
         "data_description": {
-          "daily_limit_minutes": "Every minute a TV is on counts. Once the limit is reached, TVs are turned off and every power-on needs confirmation until midnight."
+          "daily_limit_minutes": "Every minute a TV is on counts. Once the limit is reached, TVs are turned off and every power-on needs confirmation until midnight.",
+          "daily_limit_weekend": "Empty = same as other days, 0 = no limit.",
+          "daily_limit_holiday": "Applies on holidays (holiday calendar or pause entity on). Empty = as usual, 0 = no limit.",
+          "bonus_minutes": "The \"Bonus time\" button extends the daily limit and allows this many minutes without confirmation during the blocked period."
         }
       },
       "confirm": {
@@ -113,13 +127,15 @@
           "lock_minutes": "Lock duration",
           "attempt_reset_minutes": "Failed attempts expire after (0 = never)",
           "confirm_entities": "Additional confirmation switches (optional)",
-          "penalty_hours": "Penalty duration"
+          "penalty_hours": "Penalty duration",
+          "confirm_valid_minutes": "Confirmation lasts (0 = until the TV is off)"
         },
         "data_description": {
           "confirm_code": "4 to 12 digits. When a code is set, only the 'Enter code' field or the confirm button on the phone confirms. The switch and additional confirmation switches no longer count. A wrong code counts as a failed attempt.",
           "attempt_reset_minutes": "If the last failed attempt is older than this, counting starts over.",
           "confirm_entities": "Optional: existing input_boolean or switch entities that can also confirm.",
-          "penalty_hours": "The 'Penalty' button locks all TVs of this entry completely for this long. Only 'Unlock' ends it earlier."
+          "penalty_hours": "The 'Penalty' button locks all TVs of this entry completely for this long. Only 'Unlock' ends it earlier.",
+          "confirm_valid_minutes": "Afterwards a new confirmation is requested (with the warning). Without it the TV is turned off."
         }
       }
     },
@@ -184,6 +200,7 @@
           "locked": "Locked",
           "exception": "Exception",
           "limit": "Daily limit reached",
+          "bonus": "Bonus time",
           "window": "Restricted hours",
           "paused": "Restricted hours paused",
           "free": "Free"
@@ -208,6 +225,9 @@
       },
       "penalty": {
         "name": "Penalty"
+      },
+      "bonus": {
+        "name": "Bonus time"
       }
     },
     "text": {
@@ -235,6 +255,12 @@
       },
       "penalty_hours": {
         "name": "Penalty duration"
+      },
+      "bonus_minutes": {
+        "name": "Bonus time"
+      },
+      "confirm_valid": {
+        "name": "Confirmation lasts"
       }
     }
   },

@@ -2,11 +2,32 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 from typing import Any
 
 WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+
+
+# Wochentage als Liste ("mon", ...) oder eine Funktion Datum -> gilt an diesem Tag.
+DaySpec = list[str] | Callable[[date], bool]
+
+
+def day_applies(days: DaySpec, day: date) -> bool:
+    """Gilt ein Fenster, das an `day` beginnt?"""
+    if callable(days):
+        return bool(days(day))
+    return WEEKDAY_KEYS[day.weekday()] in days
+
+
+def school_window_day(start: str, day: date) -> date:
+    """Auf welchen Schultag sich ein Fenster bezieht, das an `day` beginnt.
+
+    Beginnt es ab 12:00 (z. B. 21:00 bis 07:30), ist es der Abend vor dem
+    Schultag, also zählt der Folgetag. Sonst der Tag selbst (z. B. 00:00 bis 19:00).
+    """
+    return day + timedelta(days=1) if parse_time(start) >= time(12, 0) else day
 
 
 def parse_time(value: str) -> time:
@@ -18,7 +39,7 @@ def is_in_window(
     now: datetime,
     start: str,
     end: str,
-    weekdays: list[str],
+    weekdays: DaySpec,
 ) -> bool:
     """Prüft, ob `now` im Zeitfenster und an einem gewählten Wochentag liegt.
 
@@ -31,15 +52,15 @@ def is_in_window(
     start_t = parse_time(start)
     end_t = parse_time(end)
     current = now.time().replace(tzinfo=None)
-    today = WEEKDAY_KEYS[now.weekday()]
+    today = now.date()
     if start_t == end_t:
-        return today in weekdays
+        return day_applies(weekdays, today)
     if start_t < end_t:
-        return today in weekdays and start_t <= current < end_t
+        return start_t <= current < end_t and day_applies(weekdays, today)
     if current >= start_t:
-        return today in weekdays
+        return day_applies(weekdays, today)
     if current < end_t:
-        return WEEKDAY_KEYS[(now.weekday() - 1) % 7] in weekdays
+        return day_applies(weekdays, today - timedelta(days=1))
     return False
 
 
@@ -63,7 +84,7 @@ def attempts_after_failure(
     return attempts + 1
 
 
-Window = tuple[str, str, list[str]]
+Window = tuple[str, str, DaySpec]
 
 
 def is_in_any_window(now: datetime, windows: list[Window]) -> bool:
@@ -83,9 +104,8 @@ def window_intervals(
     result: list[tuple[datetime, datetime]] = []
     for offset in range(-days_back, days_ahead + 1):
         day = now.date() + timedelta(days=offset)
-        key = WEEKDAY_KEYS[day.weekday()]
         for start, end, days in windows:
-            if key not in days:
+            if not day_applies(days, day):
                 continue
             start_t = parse_time(start)
             end_t = parse_time(end)
@@ -138,6 +158,45 @@ def app_matches(app: str | None, blocked: list[str]) -> bool:
     return any(entry.strip().lower() in value for entry in blocked if entry.strip())
 
 
+def app_blocked(app: str | None, blocked: list[str], allowed: list[str]) -> bool:
+    """Gesperrt, außer ein erlaubter Eintrag passt (z. B. youtube, aber nicht tvkids)."""
+    return app_matches(app, blocked) and not app_matches(app, allowed)
+
+
+def daily_limit_for(
+    base: int, weekend: int | None, holiday: int | None, is_weekend: bool, is_holiday: bool
+) -> int:
+    """Tageslimit für heute: Ferien vor Wochenende vor normal. None = wie normal."""
+    if is_holiday and holiday is not None:
+        return holiday
+    if is_weekend and weekend is not None:
+        return weekend
+    return base
+
+
+def holiday_dates(
+    events: list[tuple[datetime | date, datetime | date]], first: date, days: int
+) -> set[date]:
+    """Tage zwischen `first` und `first + days`, die ein Termin berührt.
+
+    Ganztägige Termine haben ein exklusives Ende (Ende = Tag nach dem letzten Tag).
+    """
+    result: set[date] = set()
+    for start, end in events:
+        if isinstance(start, datetime):
+            begin_day = start.date()
+            # Ende genau um Mitternacht zählt nicht mehr zum Folgetag.
+            last_day = (end - timedelta(microseconds=1)).date()
+        else:
+            begin_day = start
+            last_day = end - timedelta(days=1)
+        for offset in range(days):
+            day = first + timedelta(days=offset)
+            if begin_day <= day <= last_day:
+                result.add(day)
+    return result
+
+
 # ----------------------------------------------------------------------
 # Entscheidung: Was gilt gerade? (eine Stelle für Status und Durchsetzung)
 # ----------------------------------------------------------------------
@@ -148,6 +207,7 @@ class RuleState:
     enabled: bool = True
     locked: bool = False
     exception_active: bool = False
+    bonus_active: bool = False
     in_window: bool = False
     paused: bool = False
     limit_reached: bool = False
@@ -170,7 +230,8 @@ def evaluate(state: RuleState) -> Decision:
     if not state.enabled:
         return Decision("off", False, False)
     restricted = not state.exception_active and (
-        state.limit_reached or (state.in_window and not state.paused)
+        state.limit_reached
+        or (state.in_window and not state.paused and not state.bonus_active)
     )
     apps_blocked = (
         state.has_blocked_apps
@@ -184,6 +245,8 @@ def evaluate(state: RuleState) -> Decision:
         status = "exception"
     elif state.limit_reached:
         status = "limit"
+    elif state.in_window and state.bonus_active and not state.paused:
+        status = "bonus"
     elif state.in_window:
         status = "paused" if state.paused else "window"
     else:
@@ -274,7 +337,7 @@ def update_session(
         and session.confirmed_until is not None
         and now >= session.confirmed_until
     ):
-        session.status = SESSION_FREE if not restricted else SESSION_NEW
+        session.status = SESSION_NEW
         session.confirmed_until = None
 
 

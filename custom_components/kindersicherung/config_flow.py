@@ -31,16 +31,22 @@ from homeassistant.helpers.selector import (
 from .const import (
     APP_SUGGESTIONS,
     CONF_ACTIONABLE,
+    CONF_ALLOWED_APPS,
     CONF_ANNOUNCE_LOCK,
     CONF_APP_BLOCK_ALWAYS,
     CONF_APP_RELEASE_MINUTES,
     CONF_AT_START,
     CONF_ATTEMPT_RESET_MINUTES,
     CONF_BLOCKED_APPS,
+    CONF_BONUS_MINUTES,
     CONF_CONFIRM_CODE,
     CONF_CONFIRM_ENTITIES,
     CONF_CONFIRM_TIMEOUT,
+    CONF_CONFIRM_VALID_MINUTES,
+    CONF_DAILY_LIMIT_HOLIDAY,
     CONF_DAILY_LIMIT_MINUTES,
+    CONF_DAILY_LIMIT_WEEKEND,
+    CONF_HOLIDAY_CALENDARS,
     CONF_LOCK_MINUTES,
     CONF_MAX_ATTEMPTS,
     CONF_MEDIA_PLAYERS,
@@ -50,6 +56,7 @@ from .const import (
     CONF_NOTIFY_SERVICES,
     CONF_PAUSE_ENTITIES,
     CONF_PENALTY_HOURS,
+    CONF_SCHOOL_NIGHTS,
     CONF_TIME_END,
     CONF_TIME_END_2,
     CONF_TIME_START,
@@ -58,13 +65,16 @@ from .const import (
     CONF_WARN_MINUTES,
     CONF_WEEKDAYS,
     CONF_WEEKDAYS_2,
+    CONF_WORKDAY_ENTITY,
     DEFAULT_ACTIONABLE,
     DEFAULT_ANNOUNCE_LOCK,
     DEFAULT_APP_BLOCK_ALWAYS,
     DEFAULT_APP_RELEASE_MINUTES,
     DEFAULT_ATTEMPT_RESET_MINUTES,
     DEFAULT_BLOCKED_APPS,
+    DEFAULT_BONUS_MINUTES,
     DEFAULT_CONFIRM_TIMEOUT,
+    DEFAULT_CONFIRM_VALID_MINUTES,
     DEFAULT_DAILY_LIMIT_MINUTES,
     DEFAULT_LOCK_MINUTES,
     DEFAULT_MAX_ATTEMPTS,
@@ -83,6 +93,9 @@ from .logic import AT_START_CONFIRM, AT_START_NONE, AT_START_OFF, AT_START_OPTIO
 
 DEFAULT_NAME = "Wohnzimmer TV"
 
+# Vorschläge für erlaubte Apps (Ausnahmen von der App-Sperre).
+ALLOWED_APP_SUGGESTIONS = ["tvkids"]
+
 LIST_KEYS = (
     CONF_MEDIA_PLAYERS,
     CONF_CONFIRM_ENTITIES,
@@ -91,8 +104,14 @@ LIST_KEYS = (
     CONF_WEEKDAYS_2,
     CONF_BLOCKED_APPS,
     CONF_PAUSE_ENTITIES,
+    CONF_HOLIDAY_CALENDARS,
+    CONF_ALLOWED_APPS,
 )
 INT_KEYS = (
+    CONF_DAILY_LIMIT_WEEKEND,
+    CONF_DAILY_LIMIT_HOLIDAY,
+    CONF_BONUS_MINUTES,
+    CONF_CONFIRM_VALID_MINUTES,
     CONF_CONFIRM_TIMEOUT,
     CONF_MAX_ATTEMPTS,
     CONF_LOCK_MINUTES,
@@ -129,6 +148,11 @@ DEFAULTS: dict[str, Any] = {
     CONF_LOCK_MINUTES: DEFAULT_LOCK_MINUTES,
     CONF_ATTEMPT_RESET_MINUTES: DEFAULT_ATTEMPT_RESET_MINUTES,
     CONF_PENALTY_HOURS: DEFAULT_PENALTY_HOURS,
+    CONF_SCHOOL_NIGHTS: False,
+    CONF_HOLIDAY_CALENDARS: [],
+    CONF_ALLOWED_APPS: [],
+    CONF_BONUS_MINUTES: DEFAULT_BONUS_MINUTES,
+    CONF_CONFIRM_VALID_MINUTES: DEFAULT_CONFIRM_VALID_MINUTES,
 }
 
 # Bereiche im Optionen-Menü.
@@ -145,6 +169,9 @@ STEPS: dict[str, tuple[str, ...]] = {
         CONF_TIME_START,
         CONF_TIME_END,
         CONF_WEEKDAYS,
+        CONF_SCHOOL_NIGHTS,
+        CONF_WORKDAY_ENTITY,
+        CONF_HOLIDAY_CALENDARS,
         CONF_AT_START,
         CONF_WARN_MINUTES,
         CONF_TIME_START_2,
@@ -152,11 +179,22 @@ STEPS: dict[str, tuple[str, ...]] = {
         CONF_WEEKDAYS_2,
         CONF_PAUSE_ENTITIES,
     ),
-    "apps": (CONF_BLOCKED_APPS, CONF_APP_BLOCK_ALWAYS, CONF_APP_RELEASE_MINUTES),
-    "limit": (CONF_DAILY_LIMIT_MINUTES,),
+    "apps": (
+        CONF_BLOCKED_APPS,
+        CONF_ALLOWED_APPS,
+        CONF_APP_BLOCK_ALWAYS,
+        CONF_APP_RELEASE_MINUTES,
+    ),
+    "limit": (
+        CONF_DAILY_LIMIT_MINUTES,
+        CONF_DAILY_LIMIT_WEEKEND,
+        CONF_DAILY_LIMIT_HOLIDAY,
+        CONF_BONUS_MINUTES,
+    ),
     "confirm": (
         CONF_CONFIRM_CODE,
         CONF_CONFIRM_TIMEOUT,
+        CONF_CONFIRM_VALID_MINUTES,
         CONF_MAX_ATTEMPTS,
         CONF_LOCK_MINUTES,
         CONF_ATTEMPT_RESET_MINUTES,
@@ -208,6 +246,12 @@ def _slider(minimum: int, maximum: int, step: int, unit: str) -> NumberSelector:
             mode=NumberSelectorMode.SLIDER,
         )
     )
+
+
+def _suggested_number(current: dict[str, Any], key: str) -> dict[str, Any]:
+    """Vorschlag für ein optionales Zahlenfeld (auch 0); leer = nicht gesetzt."""
+    val = current.get(key)
+    return {"suggested_value": val} if val is not None else {}
 
 
 def _weekday_selector() -> SelectSelector:
@@ -348,6 +392,43 @@ def _fields(
             ),
         ),
         CONF_CONFIRM_TIMEOUT: lambda: (required(CONF_CONFIRM_TIMEOUT), _number(5, 600, "s")),
+        CONF_CONFIRM_VALID_MINUTES: lambda: (
+            required(CONF_CONFIRM_VALID_MINUTES),
+            _slider(0, 240, 15, "min"),
+        ),
+        CONF_SCHOOL_NIGHTS: lambda: (required(CONF_SCHOOL_NIGHTS), BooleanSelector()),
+        CONF_WORKDAY_ENTITY: lambda: (
+            vol.Optional(CONF_WORKDAY_ENTITY, description=suggested(CONF_WORKDAY_ENTITY)),
+            EntitySelector(EntitySelectorConfig(domain="binary_sensor")),
+        ),
+        CONF_HOLIDAY_CALENDARS: lambda: (
+            vol.Optional(CONF_HOLIDAY_CALENDARS, default=value(CONF_HOLIDAY_CALENDARS)),
+            EntitySelector(EntitySelectorConfig(domain="calendar", multiple=True)),
+        ),
+        CONF_DAILY_LIMIT_WEEKEND: lambda: (
+            vol.Optional(
+                CONF_DAILY_LIMIT_WEEKEND, description=_suggested_number(current, CONF_DAILY_LIMIT_WEEKEND)
+            ),
+            _number(0, 600, "min"),
+        ),
+        CONF_DAILY_LIMIT_HOLIDAY: lambda: (
+            vol.Optional(
+                CONF_DAILY_LIMIT_HOLIDAY, description=_suggested_number(current, CONF_DAILY_LIMIT_HOLIDAY)
+            ),
+            _number(0, 600, "min"),
+        ),
+        CONF_BONUS_MINUTES: lambda: (required(CONF_BONUS_MINUTES), _slider(5, 120, 5, "min")),
+        CONF_ALLOWED_APPS: lambda: (
+            vol.Optional(CONF_ALLOWED_APPS, default=value(CONF_ALLOWED_APPS)),
+            SelectSelector(
+                SelectSelectorConfig(
+                    options=ALLOWED_APP_SUGGESTIONS,
+                    multiple=True,
+                    custom_value=True,
+                    mode=SelectSelectorMode.DROPDOWN,
+                )
+            ),
+        ),
         CONF_MAX_ATTEMPTS: lambda: (required(CONF_MAX_ATTEMPTS), _slider(1, 10, 1, "")),
         CONF_LOCK_MINUTES: lambda: (required(CONF_LOCK_MINUTES), _number(1, 1440, "min")),
         CONF_PENALTY_HOURS: lambda: (required(CONF_PENALTY_HOURS), _slider(1, 168, 1, "h")),
@@ -384,7 +465,7 @@ def _normalize(user_input: dict[str, Any]) -> dict[str, Any]:
         if code:
             data[CONF_CONFIRM_CODE] = code
     for key in INT_KEYS:
-        if key in data:
+        if data.get(key) is not None:
             data[key] = int(data[key])
     for key in LIST_KEYS:
         if key in data:

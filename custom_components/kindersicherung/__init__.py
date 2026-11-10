@@ -9,6 +9,8 @@ from homeassistant.core import HomeAssistant
 from .const import (
     CONF_APP_BLOCK_ALWAYS,
     CONF_APP_RELEASE_MINUTES,
+    CONF_BONUS_MINUTES,
+    CONF_CONFIRM_VALID_MINUTES,
     CONF_DAILY_LIMIT_MINUTES,
     CONF_PENALTY_HOURS,
     CONF_TIME_END,
@@ -27,6 +29,8 @@ LIVE_OPTIONS = frozenset(
         CONF_WARN_MINUTES,
         CONF_APP_BLOCK_ALWAYS,
         CONF_PENALTY_HOURS,
+        CONF_BONUS_MINUTES,
+        CONF_CONFIRM_VALID_MINUTES,
     }
 )
 

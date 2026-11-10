@@ -93,6 +93,9 @@
       },
       "penalty": {
         "default": "mdi:gavel"
+      },
+      "bonus": {
+        "default": "mdi:timer-plus-outline"
       }
     },
     "text": {
@@ -120,6 +123,12 @@
       },
       "penalty_hours": {
         "default": "mdi:timer-lock-outline"
+      },
+      "bonus_minutes": {
+        "default": "mdi:timer-plus-outline"
+      },
+      "confirm_valid": {
+        "default": "mdi:timer-check-outline"
       }
     }
   }

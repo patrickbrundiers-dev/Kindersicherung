@@ -178,6 +178,8 @@ class StatusSensor(KindersicherungEntity, SensorEntity):
             until = controller.lock_until
         elif controller.exception_active:
             until = controller.exception_until
+        elif controller.bonus_active:
+            until = controller.bonus_until
         return {
             "until": until.isoformat() if until else None,
             "apps_blocked": controller.app_block_active,
@@ -185,4 +187,6 @@ class StatusSensor(KindersicherungEntity, SensorEntity):
             if controller.app_released and controller.app_release_until
             else None,
             "screen_time_minutes": controller.screen_time_minutes,
+            "daily_limit": controller.daily_limit or None,
+            "holiday_today": controller.holiday_today,
         }
