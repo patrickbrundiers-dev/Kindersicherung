@@ -53,6 +53,7 @@ DEFAULT_TIME_START_2 = "22:00:00"
 DEFAULT_TIME_END_2 = "08:00:00"
 DEFAULT_WARN_MINUTES = 0
 DEFAULT_DAILY_LIMIT_MINUTES = 0
+DEFAULT_BLOCKED_APPS = ["youtube"]
 
 # Vorschläge für gesperrte Apps; Teil des App-Namens oder der App-ID genügt.
 APP_SUGGESTIONS = ["youtube", "netflix", "disney", "amazon", "twitch", "tiktok"]

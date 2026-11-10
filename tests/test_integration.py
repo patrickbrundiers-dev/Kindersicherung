@@ -82,6 +82,7 @@ async def test_config_flow_creates_entry_with_defaults(hass: HomeAssistant) -> N
     assert options["max_attempts"] == 3
     assert options["lock_minutes"] == 30
     assert options["time_end"] == "19:00:00"
+    assert options["blocked_apps"] == ["youtube"]
     assert options["weekdays"] == WEEKDAYS
     assert options["notify_services"] == []
     assert "confirm_code" not in options

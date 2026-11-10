@@ -34,6 +34,7 @@ from .const import (
     CONF_TIME_START_2,
     CONF_WARN_MINUTES,
     CONF_WEEKDAYS_2,
+    DEFAULT_BLOCKED_APPS,
     DEFAULT_DAILY_LIMIT_MINUTES,
     DEFAULT_TIME_END_2,
     DEFAULT_TIME_START_2,
@@ -220,7 +221,8 @@ def _settings_schema(hass: HomeAssistant, current: dict[str, Any]) -> dict[Any, 
             vol.Schema(
                 {
                     vol.Optional(
-                        CONF_BLOCKED_APPS, default=current.get(CONF_BLOCKED_APPS, [])
+                        CONF_BLOCKED_APPS,
+                        default=current.get(CONF_BLOCKED_APPS, DEFAULT_BLOCKED_APPS),
                     ): SelectSelector(
                         SelectSelectorConfig(
                             options=APP_SUGGESTIONS,
