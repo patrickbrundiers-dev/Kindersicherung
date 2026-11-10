@@ -25,6 +25,7 @@ CONF_WEEKDAYS_2 = "weekdays_2"
 CONF_BLOCKED_APPS = "blocked_apps"
 CONF_APP_BLOCK_ALWAYS = "app_block_always"
 CONF_APP_RELEASE_MINUTES = "app_release_minutes"
+CONF_PENALTY_HOURS = "penalty_hours"
 CONF_PAUSE_ENTITIES = "pause_entities"
 CONF_WARN_MINUTES = "warn_minutes"
 CONF_DAILY_LIMIT_MINUTES = "daily_limit_minutes"
@@ -55,6 +56,7 @@ DEFAULT_DAILY_LIMIT_MINUTES = 0
 DEFAULT_BLOCKED_APPS = ["youtube"]
 DEFAULT_APP_BLOCK_ALWAYS = True
 DEFAULT_APP_RELEASE_MINUTES = 60
+DEFAULT_PENALTY_HOURS = 24
 
 # Vorschläge für gesperrte Apps; Teil des App-Namens oder der App-ID genügt.
 APP_SUGGESTIONS = ["youtube", "netflix", "disney", "amazon", "twitch", "tiktok"]

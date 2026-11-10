@@ -11,9 +11,11 @@ from . import KindersicherungConfigEntry
 from .const import (
     CONF_APP_RELEASE_MINUTES,
     CONF_DAILY_LIMIT_MINUTES,
+    CONF_PENALTY_HOURS,
     CONF_WARN_MINUTES,
     DEFAULT_APP_RELEASE_MINUTES,
     DEFAULT_DAILY_LIMIT_MINUTES,
+    DEFAULT_PENALTY_HOURS,
     DEFAULT_WARN_MINUTES,
 )
 from .controller import KindersicherungController
@@ -24,6 +26,7 @@ NUMBERS = (
     ("daily_limit", CONF_DAILY_LIMIT_MINUTES, DEFAULT_DAILY_LIMIT_MINUTES, 0, 600, 15),
     ("app_release", CONF_APP_RELEASE_MINUTES, DEFAULT_APP_RELEASE_MINUTES, 15, 240, 15),
     ("warn", CONF_WARN_MINUTES, DEFAULT_WARN_MINUTES, 0, 60, 5),
+    ("penalty_hours", CONF_PENALTY_HOURS, DEFAULT_PENALTY_HOURS, 1, 168, 1, UnitOfTime.HOURS),
 )
 
 
@@ -38,11 +41,10 @@ async def async_setup_entry(
 
 
 class OptionNumber(KindersicherungEntity, NumberEntity):
-    """Eine Minuten-Einstellung als Schieberegler."""
+    """Eine Zeit-Einstellung (Minuten oder Stunden) als Schieberegler."""
 
     _attr_entity_category = EntityCategory.CONFIG
     _attr_mode = NumberMode.SLIDER
-    _attr_native_unit_of_measurement = UnitOfTime.MINUTES
 
     def __init__(
         self,
@@ -53,6 +55,7 @@ class OptionNumber(KindersicherungEntity, NumberEntity):
         minimum: int,
         maximum: int,
         step: int,
+        unit: str = UnitOfTime.MINUTES,
     ) -> None:
         """Initialisiere die Entität."""
         super().__init__(controller, key)
@@ -61,6 +64,7 @@ class OptionNumber(KindersicherungEntity, NumberEntity):
         self._attr_native_min_value = minimum
         self._attr_native_max_value = maximum
         self._attr_native_step = step
+        self._attr_native_unit_of_measurement = unit
 
     @property
     def native_value(self) -> float:

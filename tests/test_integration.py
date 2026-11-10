@@ -619,3 +619,53 @@ async def test_dashboard_entities_change_options_without_reload(hass: HomeAssist
     assert hass.states.get(always).state == "on"
     assert controller.windows[0][0] == "21:00:00"
     assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_penalty_locks_for_configured_hours(hass: HomeAssistant) -> None:
+    async_mock_service(hass, "media_player", "turn_off")
+    entry = await _setup(hass)
+    controller = entry.runtime_data
+    penalty = _entity(hass, entry, "button", "penalty")
+    hours = _entity(hass, entry, "number", "penalty_hours")
+    locked = _entity(hass, entry, "binary_sensor", "locked")
+    assert hass.states.get(hours).state == "24.0"
+
+    controller.app_release_until = dt_util.utcnow() + timedelta(minutes=30)
+    before = dt_util.utcnow()
+    await hass.services.async_call(
+        "button", "press", {"entity_id": penalty}, blocking=True
+    )
+    await hass.async_block_till_done()
+    assert hass.states.get(locked).state == "on"
+    assert controller.app_release_until is None
+    delta = controller.lock_until - before
+    assert timedelta(hours=23, minutes=59) < delta <= timedelta(hours=24, minutes=1)
+    # Datum im Text, weil die Sperre nicht heute endet
+    assert "." in controller._lock_until_text()
+
+    # nach 23 Stunden noch gesperrt
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(hours=23))
+    await hass.async_block_till_done()
+    assert hass.states.get(locked).state == "on"
+
+    # kürzere Strafe verkürzt eine längere Sperre nicht
+    await hass.services.async_call(
+        "number", "set_value", {"entity_id": hours, "value": 2}, blocking=True
+    )
+    await hass.async_block_till_done()
+    assert entry.runtime_data is controller
+    until = controller.lock_until
+    await hass.services.async_call(
+        "button", "press", {"entity_id": penalty}, blocking=True
+    )
+    await hass.async_block_till_done()
+    assert controller.lock_until == until
+
+    # Entsperren hebt die Strafe auf
+    await hass.services.async_call(
+        "button", "press", {"entity_id": _entity(hass, entry, "button", "unlock")},
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+    assert hass.states.get(locked).state == "off"
+    assert await hass.config_entries.async_unload(entry.entry_id)
