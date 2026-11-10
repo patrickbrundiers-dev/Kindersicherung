@@ -27,7 +27,9 @@ Pro Einrichtung entsteht ein Gerät mit eigener Sperre. Du kannst die Integratio
 | Aktiv ab / bis, Wochentage | Zeitfenster der Abfrage. Gleiche Start- und Endzeit bedeutet ganztägig, Start nach Ende ein Fenster über Mitternacht. Bei einem Fenster über Mitternacht zählt der Morgen zum Wochentag des Abends: 21:00 bis 07:30 mit Sonntag bis Donnerstag sperrt Sonntagabend bis Freitagmorgen, Freitagabend bleibt frei. Sonst bezieht sich der Wochentag auf den aktuellen Tag. Standard: 00:00 bis 19:00 an allen Tagen. |
 | Bei Beginn des Zeitfensters ausschalten | Läuft zu „Aktiv ab“ noch ein Fernseher, wird er ausgeschaltet. Wer ihn danach einschaltet, muss bestätigen. Standard: aus. |
 | Zweites Zeitfenster | Optional (aufklappbar), z. B. am Wochenende 22:30 bis 08:00. Ohne gewählte Wochentage ist es aus. |
-| Gesperrte Apps im Zeitfenster | Teil des App-Namens oder der App-ID, z. B. `youtube`. Läuft die App im Zeitfenster, wird sie sofort beendet, auch nach einer Bestätigung. Bei Android TV drückt die Integration Home auf der zugehörigen `remote`-Entität, ohne Fernbedienungs-Entität wird der Fernseher ausgeschaltet. |
+| Gesperrte Apps | Teil des App-Namens oder der App-ID, Vorauswahl bei neuen Einträgen: `youtube`. Die App wird sofort beendet, auch nach einer normalen Bestätigung. Bei Android TV drückt die Integration Home auf der zugehörigen `remote`-Entität, ohne Fernbedienungs-Entität wird der Fernseher ausgeschaltet. |
+| Gesperrte Apps immer beenden | An (Standard bei neuen Einträgen): jederzeit. Aus: nur im Zeitfenster. Freigabe mit dem Zahlencode im Feld **Code eingeben**, mit **App freigeben** in der Handy-Benachrichtigung (kommt, sobald eine App beendet wurde) oder durch eine Bestätigung per Code bzw. Handy. Ein falscher Code zählt als Fehlversuch. |
+| Dauer einer App-Freigabe | Standard 60 Minuten. |
 | Zeitfenster aussetzen, wenn an | Kalender (z. B. Schulferien), `input_boolean` oder `binary_sensor`. Solange eine davon an ist, gelten die Zeitfenster nicht. Tageslimit und Sperre bleiben. |
 | Vorwarnung | Minuten vor Beginn des Zeitfensters und vor Ende des Tageslimits, wenn ein Fernseher läuft. 0 = aus. |
 | Tageslimit Bildschirmzeit | Minuten pro Tag über alle Fernseher des Eintrags. Ist es erreicht, wird ausgeschaltet, und bis Mitternacht muss jedes Einschalten bestätigt werden. 0 = aus. |
@@ -45,8 +47,8 @@ Pro Einrichtung entsteht ein Gerät mit eigener Sperre. Du kannst die Integratio
 - `sensor` **Fehlversuche** und **Gesperrt bis** (Zeitstempel).
 - `sensor` **Statistik**: *Bestätigungen*, *Zeitüberschreitungen*, *Falsche Codes* und *Sperren* als Gesamtzähler. Sie speichern Langzeitstatistik, im Dashboard zeigt eine „Statistik-Diagramm“-Karte (Statistic graph card) mit Zeitraum „Woche“ oder „Tag“ die Summen pro Zeitraum.
 - `button` **Entsperren** und **Jetzt sperren**.
-- `button` **Heute erlauben**: setzt Zeitfenster, App-Sperre und Tageslimit bis Mitternacht aus, bzw. bis zum Ende eines Fensters, das heute noch läuft oder beginnt (bei 21:00 bis 07:30 also bis zum nächsten Morgen). **Ausnahme beenden** hebt das wieder auf. Eine Sperre nach Fehlversuchen bleibt bestehen.
-- `sensor` **Ausnahme bis** (Zeitstempel) und **Bildschirmzeit heute** (Minuten, mit `daily_limit` und `limit_reached`).
+- `button` **Heute erlauben**: setzt Zeitfenster, App-Sperre und Tageslimit bis Mitternacht aus, bzw. bis zum Ende eines Fensters, das heute noch läuft oder beginnt (bei 21:00 bis 07:30 also bis zum nächsten Morgen). **Ausnahme beenden** hebt das wieder auf, ebenso eine App-Freigabe. Eine Sperre nach Fehlversuchen bleibt bestehen.
+- `sensor` **Ausnahme bis** und **Apps freigegeben bis** (Zeitstempel) und **Bildschirmzeit heute** (Minuten, mit `daily_limit` und `limit_reached`).
 - `binary_sensor` **Regeln aktiv**: an, solange Zeitfenster oder Tageslimit gelten (Attribute `in_window`, `paused`, `exception_active`, `limit_reached`).
 
 ## Ereignisse für eigene Automationen

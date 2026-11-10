@@ -50,16 +50,20 @@
           "rules": {
             "name": "Apps, Ferien, Vorwarnung, Tageslimit",
             "data": {
-              "blocked_apps": "Gesperrte Apps im Zeitfenster",
+              "blocked_apps": "Gesperrte Apps",
               "pause_entities": "Zeitfenster aussetzen, wenn an (z. B. Ferien)",
               "warn_minutes": "Vorwarnung (0 = aus)",
-              "daily_limit_minutes": "Tageslimit Bildschirmzeit (0 = aus)"
+              "daily_limit_minutes": "Tageslimit Bildschirmzeit (0 = aus)",
+              "app_block_always": "Gesperrte Apps immer beenden",
+              "app_release_minutes": "Dauer einer App-Freigabe"
             },
             "data_description": {
-              "blocked_apps": "Teil des App-Namens oder der App-ID, z. B. youtube. Im Zeitfenster wird die App auch nach einer Bestätigung sofort beendet (Home-Taste über die Fernbedienungs-Entität, sonst Fernseher aus).",
+              "blocked_apps": "Teil des App-Namens oder der App-ID, z. B. youtube. Die App wird sofort beendet (Home-Taste über die Fernbedienungs-Entität, sonst Fernseher aus), auch nach einer normalen Bestätigung.",
               "pause_entities": "Ist eine dieser Entitäten an (Kalender mit Ferien-Termin, input_boolean, binary_sensor), gelten die Zeitfenster nicht. Tageslimit und Sperre bleiben.",
               "warn_minutes": "So viele Minuten vor Beginn des Zeitfensters und vor Ende des Tageslimits kommt eine Nachricht, wenn ein Fernseher läuft.",
-              "daily_limit_minutes": "Gezählt wird jede Minute, in der ein Fernseher an ist. Ist das Limit erreicht, wird ausgeschaltet und bis Mitternacht muss jedes Einschalten bestätigt werden."
+              "daily_limit_minutes": "Gezählt wird jede Minute, in der ein Fernseher an ist. Ist das Limit erreicht, wird ausgeschaltet und bis Mitternacht muss jedes Einschalten bestätigt werden.",
+              "app_block_always": "An: die Apps werden jederzeit beendet. Aus: nur im Zeitfenster. Freigeben könnt ihr sie mit dem Zahlencode im Feld „Code eingeben“ oder mit „App freigeben“ in der Handy-Benachrichtigung.",
+              "app_release_minutes": "So lange bleiben gesperrte Apps nach einer Freigabe erlaubt."
             }
           }
         }
@@ -120,16 +124,20 @@
           "rules": {
             "name": "Apps, Ferien, Vorwarnung, Tageslimit",
             "data": {
-              "blocked_apps": "Gesperrte Apps im Zeitfenster",
+              "blocked_apps": "Gesperrte Apps",
               "pause_entities": "Zeitfenster aussetzen, wenn an (z. B. Ferien)",
               "warn_minutes": "Vorwarnung (0 = aus)",
-              "daily_limit_minutes": "Tageslimit Bildschirmzeit (0 = aus)"
+              "daily_limit_minutes": "Tageslimit Bildschirmzeit (0 = aus)",
+              "app_block_always": "Gesperrte Apps immer beenden",
+              "app_release_minutes": "Dauer einer App-Freigabe"
             },
             "data_description": {
-              "blocked_apps": "Teil des App-Namens oder der App-ID, z. B. youtube. Im Zeitfenster wird die App auch nach einer Bestätigung sofort beendet (Home-Taste über die Fernbedienungs-Entität, sonst Fernseher aus).",
+              "blocked_apps": "Teil des App-Namens oder der App-ID, z. B. youtube. Die App wird sofort beendet (Home-Taste über die Fernbedienungs-Entität, sonst Fernseher aus), auch nach einer normalen Bestätigung.",
               "pause_entities": "Ist eine dieser Entitäten an (Kalender mit Ferien-Termin, input_boolean, binary_sensor), gelten die Zeitfenster nicht. Tageslimit und Sperre bleiben.",
               "warn_minutes": "So viele Minuten vor Beginn des Zeitfensters und vor Ende des Tageslimits kommt eine Nachricht, wenn ein Fernseher läuft.",
-              "daily_limit_minutes": "Gezählt wird jede Minute, in der ein Fernseher an ist. Ist das Limit erreicht, wird ausgeschaltet und bis Mitternacht muss jedes Einschalten bestätigt werden."
+              "daily_limit_minutes": "Gezählt wird jede Minute, in der ein Fernseher an ist. Ist das Limit erreicht, wird ausgeschaltet und bis Mitternacht muss jedes Einschalten bestätigt werden.",
+              "app_block_always": "An: die Apps werden jederzeit beendet. Aus: nur im Zeitfenster. Freigeben könnt ihr sie mit dem Zahlencode im Feld „Code eingeben“ oder mit „App freigeben“ in der Handy-Benachrichtigung.",
+              "app_release_minutes": "So lange bleiben gesperrte Apps nach einer Freigabe erlaubt."
             }
           }
         }
@@ -182,6 +190,9 @@
       },
       "exception_until": {
         "name": "Ausnahme bis"
+      },
+      "app_release_until": {
+        "name": "Apps freigegeben bis"
       }
     },
     "button": {

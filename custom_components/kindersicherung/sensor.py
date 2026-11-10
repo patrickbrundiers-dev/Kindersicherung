@@ -33,6 +33,7 @@ async def async_setup_entry(
             LockUntilSensor(controller),
             ScreenTimeSensor(controller),
             ExceptionUntilSensor(controller),
+            AppReleaseUntilSensor(controller),
             *(StatSensor(controller, key) for key in STAT_KEYS),
         ]
     )
@@ -134,3 +135,19 @@ class ExceptionUntilSensor(KindersicherungEntity, SensorEntity):
         """Ende der Ausnahme oder None."""
         controller = self._controller
         return controller.exception_until if controller.exception_active else None
+
+
+class AppReleaseUntilSensor(KindersicherungEntity, SensorEntity):
+    """Ende der App-Freigabe per Code oder Handy."""
+
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+
+    def __init__(self, controller: KindersicherungController) -> None:
+        """Initialisiere den Sensor."""
+        super().__init__(controller, "app_release_until")
+
+    @property
+    def native_value(self) -> datetime | None:
+        """Ende der App-Freigabe oder None."""
+        controller = self._controller
+        return controller.app_release_until if controller.app_released else None

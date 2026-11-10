@@ -20,6 +20,9 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    APP_ACTION_PREFIX,
+    CONF_APP_BLOCK_ALWAYS,
+    CONF_APP_RELEASE_MINUTES,
     CONF_BLOCKED_APPS,
     CONF_DAILY_LIMIT_MINUTES,
     CONF_PAUSE_ENTITIES,
@@ -27,6 +30,7 @@ from .const import (
     CONF_TIME_START_2,
     CONF_WARN_MINUTES,
     CONF_WEEKDAYS_2,
+    DEFAULT_APP_RELEASE_MINUTES,
     DEFAULT_DAILY_LIMIT_MINUTES,
     DEFAULT_TIME_END_2,
     DEFAULT_TIME_START_2,
@@ -117,6 +121,7 @@ class KindersicherungController:
         self.last_failure: datetime | None = None
         self.lock_until: datetime | None = None
         self.exception_until: datetime | None = None
+        self.app_release_until: datetime | None = None
         self.screen_time_date: str | None = None
         self.screen_time_minutes = 0
         self.limit_reached = False
@@ -206,6 +211,28 @@ class KindersicherungController:
         )
 
     @property
+    def app_block_always(self) -> bool:
+        """Gesperrte Apps immer beenden (nicht nur im Zeitfenster)?
+
+        Ältere Einträge ohne diese Einstellung behalten das bisherige
+        Verhalten (nur im Zeitfenster).
+        """
+        return bool(self._opts.get(CONF_APP_BLOCK_ALWAYS, False))
+
+    @property
+    def app_release_minutes(self) -> int:
+        """Dauer einer App-Freigabe per Code oder Handy."""
+        return int(
+            self._opts.get(CONF_APP_RELEASE_MINUTES, DEFAULT_APP_RELEASE_MINUTES)
+            or DEFAULT_APP_RELEASE_MINUTES
+        )
+
+    @property
+    def app_action_id(self) -> str:
+        """Action-ID für „App freigeben“ in der mobilen Benachrichtigung."""
+        return f"{APP_ACTION_PREFIX}{self.entry.entry_id}"
+
+    @property
     def confirm_action_id(self) -> str:
         """Action-ID für den Bestätigen-Button der mobilen Benachrichtigung."""
         return f"{CONFIRM_ACTION_PREFIX}{self.entry.entry_id}"
@@ -256,6 +283,23 @@ class KindersicherungController:
         return self.in_window and not self.paused
 
     @property
+    def app_released(self) -> bool:
+        """Sind gesperrte Apps gerade per Code oder Handy freigegeben?"""
+        return (
+            self.app_release_until is not None
+            and self.app_release_until > dt_util.utcnow()
+        )
+
+    @property
+    def app_block_active(self) -> bool:
+        """Werden gesperrte Apps gerade beendet?"""
+        if not self.enabled or not self.blocked_apps:
+            return False
+        if self.exception_active or self.app_released:
+            return False
+        return self.app_block_always or self.restricted
+
+    @property
     def waiting_for_confirmation(self) -> bool:
         """Wartet die Kindersicherung gerade auf eine Bestätigung?"""
         return self._confirm_event is not None
@@ -290,6 +334,9 @@ class KindersicherungController:
             "exception_until": self.exception_until.isoformat()
             if self.exception_until
             else None,
+            "app_release_until": self.app_release_until.isoformat()
+            if self.app_release_until
+            else None,
             "screen_time_date": self.screen_time_date,
             "screen_time_minutes": self.screen_time_minutes,
             "limit_reached": self.limit_reached,
@@ -312,6 +359,8 @@ class KindersicherungController:
             self.lock_until = dt_util.parse_datetime(raw)
         if raw := data.get("exception_until"):
             self.exception_until = dt_util.parse_datetime(raw)
+        if raw := data.get("app_release_until"):
+            self.app_release_until = dt_util.parse_datetime(raw)
         self.screen_time_date = data.get("screen_time_date")
         self.screen_time_minutes = int(data.get("screen_time_minutes") or 0)
         self.limit_reached = bool(data.get("limit_reached", False))
@@ -377,7 +426,7 @@ class KindersicherungController:
         entity_id = event.data["entity_id"]
         old = old_state.state if old_state is not None else None
 
-        if self.restricted and self._runs_blocked_app(new_state):
+        if self.app_block_active and self._runs_blocked_app(new_state):
             old_app = self._app_of(old_state) if old_state is not None else None
             if old_app != self._app_of(new_state) or old in INACTIVE_STATES:
                 self.entry.async_create_task(
@@ -433,9 +482,14 @@ class KindersicherungController:
     @callback
     def _async_notification_action(self, event: Event) -> None:
         """Bestätigen-Button einer mobilen Benachrichtigung wurde gedrückt."""
-        if event.data.get("action") == self.confirm_action_id:
+        action = event.data.get("action")
+        if action == self.confirm_action_id:
             self.entry.async_create_task(
                 self.hass, self.async_confirm("app"), "kindersicherung app confirm"
+            )
+        elif action == self.app_action_id:
+            self.entry.async_create_task(
+                self.hass, self.async_release_apps(), "kindersicherung app release"
             )
 
     # ------------------------------------------------------------------
@@ -469,7 +523,7 @@ class KindersicherungController:
             if not self.exception_active and not self.paused:
                 await self._async_check_window_start(now, active)
 
-        if self.restricted and self.blocked_apps:
+        if self.app_block_active:
             for entity_id in active:
                 state = self.hass.states.get(entity_id)
                 if state is not None and self._runs_blocked_app(state):
@@ -554,6 +608,22 @@ class KindersicherungController:
             await self._async_notify(
                 "Diese App ist gerade gesperrt.", entities_only=True
             )
+            await self._async_notify(
+                f"Kindersicherung {self.entry.title}: gesperrte App beendet. "
+                f"Freigabe für {self.app_release_minutes} Minuten per Code oder Button.",
+                services_only=True,
+                action=(self.app_action_id, "App freigeben")
+                if self._opts.get(CONF_ACTIONABLE, DEFAULT_ACTIONABLE)
+                else None,
+            )
+
+    async def async_release_apps(self) -> None:
+        """Gesperrte Apps für die eingestellte Dauer freigeben (Code oder Handy)."""
+        self.app_release_until = dt_util.utcnow() + timedelta(
+            minutes=self.app_release_minutes
+        )
+        await self._async_save()
+        self._notify_listeners()
 
     # ------------------------------------------------------------------
     # Ausnahme „heute erlauben“
@@ -570,8 +640,9 @@ class KindersicherungController:
         )
 
     async def async_end_exception(self) -> None:
-        """Ausnahme beenden."""
+        """Ausnahme und App-Freigabe beenden."""
         self.exception_until = None
+        self.app_release_until = None
         await self._async_save()
         self._notify_listeners()
 
@@ -637,15 +708,25 @@ class KindersicherungController:
         self._confirm_ok = True
         if self._confirm_event is not None and not self._confirm_event.is_set():
             self._confirm_event.set()
+        if via in ("code", "app"):
+            # Freigabe durch Eltern (Code oder Handy) gibt auch gesperrte Apps frei.
+            await self.async_release_apps()
         self._notify_listeners()
 
     async def async_submit_code(self, code: str) -> None:
         """Zahlencode eingegeben: richtig bestätigt, falsch zählt als Fehlversuch."""
         if not self.confirm_code:
             return
+        correct = hmac.compare_digest(code.strip().encode(), self.confirm_code.encode())
         if self._confirm_event is None or self._confirm_event.is_set():
+            # Keine Abfrage läuft: der Code gibt gesperrte Apps frei.
+            if correct:
+                await self.async_release_apps()
+            else:
+                self.stats["wrong_codes"] += 1
+                await self._async_register_failure("wrong_code")
             return
-        if hmac.compare_digest(code.strip().encode(), self.confirm_code.encode()):
+        if correct:
             await self.async_confirm("code")
             return
         self._confirm_ok = False
@@ -685,9 +766,14 @@ class KindersicherungController:
         *,
         actionable: bool = False,
         entities_only: bool = False,
+        services_only: bool = False,
+        action: tuple[str, str] | None = None,
     ) -> None:
         """Sende eine Nachricht an die konfigurierten Ziele."""
-        if entities := self._opts.get(CONF_NOTIFY_ENTITIES, []):
+        if actionable:
+            action = (self.confirm_action_id, "Bestätigen")
+        entities = [] if services_only else self._opts.get(CONF_NOTIFY_ENTITIES, [])
+        if entities:
             try:
                 await self.hass.services.async_call(
                     "notify",
@@ -704,12 +790,10 @@ class KindersicherungController:
         for service in self._opts.get(CONF_NOTIFY_SERVICES, []):
             service = service.removeprefix("notify.")
             data: dict[str, Any] = {"message": message}
-            if actionable:
+            if action is not None:
                 data["data"] = {
                     "tag": f"{DOMAIN}_{self.entry.entry_id}",
-                    "actions": [
-                        {"action": self.confirm_action_id, "title": "Bestätigen"}
-                    ],
+                    "actions": [{"action": action[0], "title": action[1]}],
                 }
             try:
                 await self.hass.services.async_call(
