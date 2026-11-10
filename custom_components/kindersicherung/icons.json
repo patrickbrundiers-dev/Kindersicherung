@@ -61,6 +61,21 @@
       },
       "app_release_until": {
         "default": "mdi:application-lock-outline"
+      },
+      "status": {
+        "default": "mdi:shield-check",
+        "state": {
+          "off": "mdi:shield-off-outline",
+          "locked": "mdi:lock",
+          "exception": "mdi:party-popper",
+          "limit": "mdi:timer-off-outline",
+          "window": "mdi:sleep",
+          "paused": "mdi:beach",
+          "free": "mdi:shield-check"
+        }
+      },
+      "apps_closed": {
+        "default": "mdi:application-remove"
       }
     },
     "button": {

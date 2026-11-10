@@ -15,7 +15,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import KindersicherungConfigEntry
-from .const import STAT_KEYS
+from .const import STAT_KEYS, STATUS_OPTIONS
 from .controller import KindersicherungController
 from .entity import KindersicherungEntity
 
@@ -29,6 +29,7 @@ async def async_setup_entry(
     controller = entry.runtime_data
     async_add_entities(
         [
+            StatusSensor(controller),
             AttemptsSensor(controller),
             LockUntilSensor(controller),
             ScreenTimeSensor(controller),
@@ -151,3 +152,37 @@ class AppReleaseUntilSensor(KindersicherungEntity, SensorEntity):
         """Ende der App-Freigabe oder None."""
         controller = self._controller
         return controller.app_release_until if controller.app_released else None
+
+
+class StatusSensor(KindersicherungEntity, SensorEntity):
+    """Zustand auf einen Blick: frei, Sperrzeit, gesperrt, Ausnahme, ..."""
+
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = STATUS_OPTIONS
+
+    def __init__(self, controller: KindersicherungController) -> None:
+        """Initialisiere den Sensor."""
+        super().__init__(controller, "status")
+
+    @property
+    def native_value(self) -> str:
+        """Aktueller Zustand."""
+        return self._controller.status
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Bis wann der Zustand gilt und ob Apps gesperrt sind."""
+        controller = self._controller
+        until = None
+        if controller.locked:
+            until = controller.lock_until
+        elif controller.exception_active:
+            until = controller.exception_until
+        return {
+            "until": until.isoformat() if until else None,
+            "apps_blocked": controller.app_block_active,
+            "app_release_until": controller.app_release_until.isoformat()
+            if controller.app_released and controller.app_release_until
+            else None,
+            "screen_time_minutes": controller.screen_time_minutes,
+        }

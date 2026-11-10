@@ -35,7 +35,12 @@ CONF_MAX_ATTEMPTS = "max_attempts"
 CONF_LOCK_MINUTES = "lock_minutes"
 CONF_ATTEMPT_RESET_MINUTES = "attempt_reset_minutes"
 
-STAT_KEYS = ("confirmations", "timeouts", "wrong_codes", "locks")
+STAT_KEYS = ("confirmations", "timeouts", "wrong_codes", "locks", "apps_closed")
+
+# Bildschirmschoner und ähnliche Leerlauf-Apps: zählen nicht als Bildschirmzeit.
+IDLE_APPS = ["dreamx", "screensaver", "daydream", "backdrop"]
+
+STATUS_OPTIONS = ["off", "locked", "exception", "limit", "window", "paused", "free"]
 
 WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 

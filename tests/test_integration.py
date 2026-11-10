@@ -669,3 +669,46 @@ async def test_penalty_locks_for_configured_hours(hass: HomeAssistant) -> None:
     await hass.async_block_till_done()
     assert hass.states.get(locked).state == "off"
     assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_screensaver_does_not_count_as_screen_time(hass: HomeAssistant) -> None:
+    entry = await _setup_with_tv_on(hass, weekdays=[])
+    controller = entry.runtime_data
+    now = dt_util.now()
+    await controller.async_minute_tick(now)
+    assert controller.screen_time_minutes == 1
+    hass.states.async_set(
+        TV, "on", {"app_id": "com.google.android.apps.tv.dreamx"}
+    )
+    await hass.async_block_till_done()
+    await controller.async_minute_tick(now + timedelta(minutes=1))
+    await controller.async_minute_tick(now + timedelta(minutes=2))
+    assert controller.screen_time_minutes == 1
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_status_sensor_and_apps_closed(hass: HomeAssistant) -> None:
+    async_mock_service(hass, "media_player", "turn_off")
+    entry = await _setup(hass, weekdays=[], blocked_apps=["youtube"], app_block_always=True)
+    controller = entry.runtime_data
+    status = _entity(hass, entry, "sensor", "status")
+    closed = _entity(hass, entry, "sensor", "apps_closed")
+    assert hass.states.get(status).state == "free"
+    assert hass.states.get(status).attributes["apps_blocked"] is True
+
+    await controller.async_penalty()
+    await hass.async_block_till_done()
+    assert hass.states.get(status).state == "locked"
+    assert hass.states.get(status).attributes["until"]
+
+    await controller.async_unlock()
+    await controller.async_allow_today()
+    await hass.async_block_till_done()
+    assert hass.states.get(status).state == "exception"
+    await controller.async_end_exception()
+
+    hass.states.async_set(TV, "on", YOUTUBE)
+    await hass.async_block_till_done()
+    await asyncio.sleep(0.1)
+    assert hass.states.get(closed).state == "1"
+    assert await hass.config_entries.async_unload(entry.entry_id)
