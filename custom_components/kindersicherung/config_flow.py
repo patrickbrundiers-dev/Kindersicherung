@@ -27,6 +27,8 @@ from homeassistant.helpers.selector import (
 
 from .const import (
     APP_SUGGESTIONS,
+    CONF_APP_BLOCK_ALWAYS,
+    CONF_APP_RELEASE_MINUTES,
     CONF_BLOCKED_APPS,
     CONF_DAILY_LIMIT_MINUTES,
     CONF_PAUSE_ENTITIES,
@@ -34,6 +36,8 @@ from .const import (
     CONF_TIME_START_2,
     CONF_WARN_MINUTES,
     CONF_WEEKDAYS_2,
+    DEFAULT_APP_BLOCK_ALWAYS,
+    DEFAULT_APP_RELEASE_MINUTES,
     DEFAULT_BLOCKED_APPS,
     DEFAULT_DAILY_LIMIT_MINUTES,
     DEFAULT_TIME_END_2,
@@ -90,6 +94,7 @@ INT_KEYS = (
     CONF_ATTEMPT_RESET_MINUTES,
     CONF_WARN_MINUTES,
     CONF_DAILY_LIMIT_MINUTES,
+    CONF_APP_RELEASE_MINUTES,
 )
 SECTIONS = (SECTION_SECOND_WINDOW, SECTION_RULES)
 
@@ -231,6 +236,22 @@ def _settings_schema(hass: HomeAssistant, current: dict[str, Any]) -> dict[Any, 
                             mode=SelectSelectorMode.DROPDOWN,
                         )
                     ),
+                    vol.Required(
+                        CONF_APP_BLOCK_ALWAYS,
+                        # Neue Einträge: immer; bestehende ohne Wert: wie bisher.
+                        default=current.get(
+                            CONF_APP_BLOCK_ALWAYS,
+                            DEFAULT_APP_BLOCK_ALWAYS
+                            if CONF_MEDIA_PLAYERS not in current
+                            else False,
+                        ),
+                    ): BooleanSelector(),
+                    vol.Required(
+                        CONF_APP_RELEASE_MINUTES,
+                        default=current.get(
+                            CONF_APP_RELEASE_MINUTES, DEFAULT_APP_RELEASE_MINUTES
+                        ),
+                    ): _number(5, 1440, "min"),
                     vol.Optional(
                         CONF_PAUSE_ENTITIES,
                         default=current.get(CONF_PAUSE_ENTITIES, []),

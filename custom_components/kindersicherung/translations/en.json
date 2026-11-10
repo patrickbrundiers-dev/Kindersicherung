@@ -50,16 +50,20 @@
           "rules": {
             "name": "Apps, holidays, warning, daily limit",
             "data": {
-              "blocked_apps": "Blocked apps in the time window",
+              "blocked_apps": "Blocked apps",
               "pause_entities": "Suspend time windows while on (e.g. holidays)",
               "warn_minutes": "Warning (0 = off)",
-              "daily_limit_minutes": "Daily screen time limit (0 = off)"
+              "daily_limit_minutes": "Daily screen time limit (0 = off)",
+              "app_block_always": "Always close blocked apps",
+              "app_release_minutes": "Duration of an app release"
             },
             "data_description": {
-              "blocked_apps": "Part of the app name or app ID, e.g. youtube. In the time window the app is closed immediately, even after confirmation (home key via the remote entity, otherwise TV off).",
+              "blocked_apps": "Part of the app name or app ID, e.g. youtube. The app is closed immediately (home key via the remote entity, otherwise TV off), even after a normal confirmation.",
               "pause_entities": "While one of these entities is on (calendar with a holiday event, input_boolean, binary_sensor), the time windows do not apply. Daily limit and lock stay.",
               "warn_minutes": "This many minutes before the time window starts and before the daily limit ends, a message is sent if a TV is on.",
-              "daily_limit_minutes": "Every minute a TV is on counts. Once the limit is reached, TVs are turned off and every power-on needs confirmation until midnight."
+              "daily_limit_minutes": "Every minute a TV is on counts. Once the limit is reached, TVs are turned off and every power-on needs confirmation until midnight.",
+              "app_block_always": "On: the apps are closed at any time. Off: only in the time window. Release them with the code in the 'Enter code' field or with 'App freigeben' in the phone notification.",
+              "app_release_minutes": "Blocked apps stay allowed this long after a release."
             }
           }
         }
@@ -120,16 +124,20 @@
           "rules": {
             "name": "Apps, holidays, warning, daily limit",
             "data": {
-              "blocked_apps": "Blocked apps in the time window",
+              "blocked_apps": "Blocked apps",
               "pause_entities": "Suspend time windows while on (e.g. holidays)",
               "warn_minutes": "Warning (0 = off)",
-              "daily_limit_minutes": "Daily screen time limit (0 = off)"
+              "daily_limit_minutes": "Daily screen time limit (0 = off)",
+              "app_block_always": "Always close blocked apps",
+              "app_release_minutes": "Duration of an app release"
             },
             "data_description": {
-              "blocked_apps": "Part of the app name or app ID, e.g. youtube. In the time window the app is closed immediately, even after confirmation (home key via the remote entity, otherwise TV off).",
+              "blocked_apps": "Part of the app name or app ID, e.g. youtube. The app is closed immediately (home key via the remote entity, otherwise TV off), even after a normal confirmation.",
               "pause_entities": "While one of these entities is on (calendar with a holiday event, input_boolean, binary_sensor), the time windows do not apply. Daily limit and lock stay.",
               "warn_minutes": "This many minutes before the time window starts and before the daily limit ends, a message is sent if a TV is on.",
-              "daily_limit_minutes": "Every minute a TV is on counts. Once the limit is reached, TVs are turned off and every power-on needs confirmation until midnight."
+              "daily_limit_minutes": "Every minute a TV is on counts. Once the limit is reached, TVs are turned off and every power-on needs confirmation until midnight.",
+              "app_block_always": "On: the apps are closed at any time. Off: only in the time window. Release them with the code in the 'Enter code' field or with 'App freigeben' in the phone notification.",
+              "app_release_minutes": "Blocked apps stay allowed this long after a release."
             }
           }
         }
@@ -182,6 +190,9 @@
       },
       "exception_until": {
         "name": "Exception until"
+      },
+      "app_release_until": {
+        "name": "Apps released until"
       }
     },
     "button": {

@@ -52,6 +52,9 @@
       },
       "exception_until": {
         "default": "mdi:calendar-check"
+      },
+      "app_release_until": {
+        "default": "mdi:application-lock-outline"
       }
     },
     "button": {

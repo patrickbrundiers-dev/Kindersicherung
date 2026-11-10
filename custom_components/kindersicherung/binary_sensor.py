@@ -71,4 +71,5 @@ class RestrictedBinarySensor(KindersicherungEntity, BinarySensorEntity):
             "paused": controller.paused,
             "exception_active": controller.exception_active,
             "limit_reached": controller.limit_reached,
+            "app_block_active": controller.app_block_active,
         }

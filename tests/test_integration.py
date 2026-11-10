@@ -83,6 +83,7 @@ async def test_config_flow_creates_entry_with_defaults(hass: HomeAssistant) -> N
     assert options["lock_minutes"] == 30
     assert options["time_end"] == "19:00:00"
     assert options["blocked_apps"] == ["youtube"]
+    assert options["app_block_always"] is True
     assert options["weekdays"] == WEEKDAYS
     assert options["notify_services"] == []
     assert "confirm_code" not in options
@@ -478,4 +479,77 @@ async def test_warning_before_window_start(hass: HomeAssistant) -> None:
     await entry.runtime_data.async_minute_tick(moment)
     await hass.async_block_till_done()
     assert any("In 10 Minuten" in c.data["message"] for c in notify)
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_app_block_always_and_code_release(hass: HomeAssistant) -> None:
+    turn_off = async_mock_service(hass, "media_player", "turn_off")
+    notify = async_mock_service(hass, "notify", "mobile_app_test")
+    entry = await _setup_with_tv_on(
+        hass,
+        weekdays=[],  # kein Zeitfenster: nur die App-Sperre zählt
+        blocked_apps=["youtube"],
+        app_block_always=True,
+        confirm_code="4711",
+        notify_services=["mobile_app_test"],
+    )
+    controller = entry.runtime_data
+    code = _entity(hass, entry, "text", "code")
+    released = _entity(hass, entry, "sensor", "app_release_until")
+
+    hass.states.async_set(TV, "playing", YOUTUBE)
+    await hass.async_block_till_done()
+    await asyncio.sleep(0.05)
+    assert len(turn_off) >= 1
+    hass.states.async_set(TV, "off")  # Fernseher ist aus, keine Wiederholung
+    await hass.async_block_till_done()
+    actions = notify[-1].data["data"]["actions"]
+    assert actions[0]["action"] == controller.app_action_id
+
+    # falscher Code: Fehlversuch, keine Freigabe
+    await hass.services.async_call(
+        "text", "set_value", {"entity_id": code, "value": "0000"}, blocking=True
+    )
+    assert controller.attempts == 1
+    assert not controller.app_released
+
+    # richtiger Code: YouTube erlaubt
+    await hass.services.async_call(
+        "text", "set_value", {"entity_id": code, "value": "4711"}, blocking=True
+    )
+    await hass.async_block_till_done()
+    assert controller.app_released
+    assert hass.states.get(released).state not in ("unknown", "unavailable")
+    calls = len(turn_off)
+    hass.states.async_set(TV, "on", {"app_id": "ar.tvplayer.tv"})
+    hass.states.async_set(TV, "playing", YOUTUBE)
+    await hass.async_block_till_done()
+    await asyncio.sleep(0.05)
+    assert len(turn_off) == calls
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_app_release_via_phone_button(hass: HomeAssistant) -> None:
+    async_mock_service(hass, "media_player", "turn_off")
+    entry = await _setup_with_tv_on(
+        hass, weekdays=[], blocked_apps=["youtube"], app_block_always=True
+    )
+    controller = entry.runtime_data
+    assert controller.app_block_active
+    hass.bus.async_fire(
+        "mobile_app_notification_action", {"action": controller.app_action_id}
+    )
+    await hass.async_block_till_done()
+    assert controller.app_released
+    assert not controller.app_block_active
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_old_entries_block_apps_only_in_window(hass: HomeAssistant) -> None:
+    turn_off = async_mock_service(hass, "media_player", "turn_off")
+    entry = await _setup_with_tv_on(hass, weekdays=[], blocked_apps=["youtube"])
+    hass.states.async_set(TV, "playing", YOUTUBE)
+    await hass.async_block_till_done()
+    await asyncio.sleep(0.05)
+    assert not turn_off
     assert await hass.config_entries.async_unload(entry.entry_id)

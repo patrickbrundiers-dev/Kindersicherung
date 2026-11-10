@@ -23,6 +23,8 @@ CONF_TIME_START_2 = "time_start_2"
 CONF_TIME_END_2 = "time_end_2"
 CONF_WEEKDAYS_2 = "weekdays_2"
 CONF_BLOCKED_APPS = "blocked_apps"
+CONF_APP_BLOCK_ALWAYS = "app_block_always"
+CONF_APP_RELEASE_MINUTES = "app_release_minutes"
 CONF_PAUSE_ENTITIES = "pause_entities"
 CONF_WARN_MINUTES = "warn_minutes"
 CONF_DAILY_LIMIT_MINUTES = "daily_limit_minutes"
@@ -54,6 +56,8 @@ DEFAULT_TIME_END_2 = "08:00:00"
 DEFAULT_WARN_MINUTES = 0
 DEFAULT_DAILY_LIMIT_MINUTES = 0
 DEFAULT_BLOCKED_APPS = ["youtube"]
+DEFAULT_APP_BLOCK_ALWAYS = True
+DEFAULT_APP_RELEASE_MINUTES = 60
 
 # Vorschläge für gesperrte Apps; Teil des App-Namens oder der App-ID genügt.
 APP_SUGGESTIONS = ["youtube", "netflix", "disney", "amazon", "twitch", "tiktok"]
@@ -70,3 +74,4 @@ EVENT_UNLOCKED = f"{DOMAIN}_unlocked"
 
 MOBILE_APP_ACTION_EVENT = "mobile_app_notification_action"
 CONFIRM_ACTION_PREFIX = "KINDERSICHERUNG_CONFIRM_"
+APP_ACTION_PREFIX = "KINDERSICHERUNG_APP_"
