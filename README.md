@@ -1,5 +1,9 @@
 # Kindersicherung für Home Assistant
 
+[![Tests](https://github.com/patrickbrundiers-dev/Kindersicherung/actions/workflows/tests.yaml/badge.svg)](https://github.com/patrickbrundiers-dev/Kindersicherung/actions/workflows/tests.yaml)
+[![Validate](https://github.com/patrickbrundiers-dev/Kindersicherung/actions/workflows/validate.yaml/badge.svg)](https://github.com/patrickbrundiers-dev/Kindersicherung/actions/workflows/validate.yaml)
+[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/docs/faq/custom_repositories)
+
 Wird ein Fernseher eingeschaltet, muss innerhalb weniger Sekunden bestätigt werden (Schalter, Button in der Handy-Benachrichtigung oder ein vorhandener Schalter). Sonst wird der Fernseher wieder ausgeschaltet. Nach mehreren Fehlversuchen sind die Fernseher für eine einstellbare Zeit gesperrt.
 
 Die Integration ersetzt die Automationen „Kindersicherung TV Wohnzimmer“ samt Sperr-Automation, Zähler, Timer und Bestätigungs-Helfer. **Alles wird im Editor eingestellt**, es ist kein YAML nötig.
@@ -85,4 +89,21 @@ Nach dem Einrichten und einem Test können die alten Automationen („Kindersich
 
 ## Entwicklung
 
-Tests laufen mit `pip install -r requirements_test.txt` und `pytest`. Auf GitHub laufen sie zusammen mit hassfest und der HACS-Prüfung bei jedem Push.
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements_test.txt ruff
+pytest          # Tests (Logik, Ablauf, Übersetzungen)
+ruff check .    # Lint
+```
+
+Aufbau von `custom_components/kindersicherung/`:
+
+| Datei | Inhalt |
+|---|---|
+| `controller.py` | Ablauf: Einschalten erkennen, Bestätigung, Sperre, Zeitfenster, App-Sperre, Tageslimit |
+| `logic.py` | Reine Zeit- und Zählerlogik ohne Home Assistant, in `tests/test_logic.py` getestet |
+| `config_flow.py` | Einrichtung und Menü unter **Konfigurieren** |
+| `binary_sensor.py`, `sensor.py`, `switch.py`, `button.py`, `number.py`, `time.py`, `text.py` | Entitäten, alle über `entity.py` an den Controller gebunden |
+| `translations/`, `icons.json` | Texte (de, en) und Icons, gleiche Schlüssel werden in `tests/test_translations.py` geprüft |
+
+Auf GitHub laufen bei jedem Pull Request und auf `main` die Tests, Ruff, hassfest und die HACS-Prüfung, hassfest und HACS zusätzlich jeden Montag. Für eine neue Version die `version` in `manifest.json` erhöhen.
