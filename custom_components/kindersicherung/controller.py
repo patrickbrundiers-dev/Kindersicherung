@@ -14,6 +14,7 @@ from homeassistant.core import Event, EventStateChangedData, HomeAssistant, call
 from homeassistant.helpers.event import (
     async_track_point_in_utc_time,
     async_track_state_change_event,
+    async_track_time_change,
 )
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
@@ -33,6 +34,7 @@ from .const import (
     CONF_NOTIFY_SERVICES,
     CONF_TIME_END,
     CONF_TIME_START,
+    CONF_TURN_OFF_AT_START,
     CONF_WEEKDAYS,
     CONFIRM_ACTION_PREFIX,
     DEFAULT_ACTIONABLE,
@@ -44,6 +46,7 @@ from .const import (
     DEFAULT_MESSAGE,
     DEFAULT_TIME_END,
     DEFAULT_TIME_START,
+    DEFAULT_TURN_OFF_AT_START,
     DOMAIN,
     EVENT_CONFIRMED,
     EVENT_FAILED,
@@ -56,7 +59,7 @@ from .const import (
     STORAGE_VERSION,
     WEEKDAYS,
 )
-from .logic import attempts_after_failure, is_in_window
+from .logic import attempts_after_failure, is_in_window, parse_time
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -232,6 +235,17 @@ class KindersicherungController:
                 MOBILE_APP_ACTION_EVENT, self._async_notification_action
             )
         )
+        if self._opts.get(CONF_TURN_OFF_AT_START, DEFAULT_TURN_OFF_AT_START):
+            start = parse_time(self._opts.get(CONF_TIME_START, DEFAULT_TIME_START))
+            self._unsubs.append(
+                async_track_time_change(
+                    self.hass,
+                    self._async_window_started,
+                    hour=start.hour,
+                    minute=start.minute,
+                    second=start.second,
+                )
+            )
 
     @callback
     def async_shutdown(self) -> None:
@@ -312,6 +326,19 @@ class KindersicherungController:
             self.entry.async_create_task(
                 self.hass, self.async_confirm("app"), "kindersicherung app confirm"
             )
+
+    @callback
+    def _async_window_started(self, _now: datetime) -> None:
+        """Zeitfenster beginnt: laufende Fernseher ausschalten (falls eingestellt)."""
+        if not self.enabled or not self._is_active_now():
+            return
+        if not (players := self._active_players()):
+            return
+        self.entry.async_create_task(
+            self.hass,
+            self._async_turn_off(players),
+            "kindersicherung turn off at window start",
+        )
 
     def _is_active_now(self) -> bool:
         return is_in_window(

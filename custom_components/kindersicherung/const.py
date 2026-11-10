@@ -18,6 +18,7 @@ CONF_ANNOUNCE_LOCK = "announce_lock"
 CONF_TIME_START = "time_start"
 CONF_TIME_END = "time_end"
 CONF_WEEKDAYS = "weekdays"
+CONF_TURN_OFF_AT_START = "turn_off_at_start"
 CONF_CONFIRM_TIMEOUT = "confirm_timeout"
 CONF_MAX_ATTEMPTS = "max_attempts"
 CONF_LOCK_MINUTES = "lock_minutes"
@@ -36,6 +37,7 @@ DEFAULT_LOCK_MINUTES = 30
 DEFAULT_ATTEMPT_RESET_MINUTES = 60
 DEFAULT_ACTIONABLE = True
 DEFAULT_ANNOUNCE_LOCK = True
+DEFAULT_TURN_OFF_AT_START = False
 
 # Zustände, in denen ein Media Player als "aus" gilt.
 INACTIVE_STATES = frozenset({"off", "standby", "unavailable", "unknown"})

@@ -38,3 +38,21 @@ def test_attempts():
     assert logic.attempts_after_failure(2, now - timedelta(minutes=10), now, 60) == 3
     assert logic.attempts_after_failure(2, now - timedelta(minutes=90), now, 60) == 1
     assert logic.attempts_after_failure(2, now - timedelta(days=3), now, 0) == 3
+
+
+def test_window_overnight_belongs_to_start_day():
+    # 21:00-07:30 nur Montag: Montagabend und Dienstagmorgen gesperrt,
+    # Montagmorgen (gehört zu Sonntag) nicht.
+    mon = ["mon"]
+    assert logic.is_in_window(datetime(2026, 10, 5, 21, 0), "21:00", "07:30", mon)
+    assert logic.is_in_window(datetime(2026, 10, 6, 7, 29), "21:00", "07:30", mon)
+    assert not logic.is_in_window(datetime(2026, 10, 6, 7, 30), "21:00", "07:30", mon)
+    assert not logic.is_in_window(datetime(2026, 10, 5, 6, 0), "21:00", "07:30", mon)
+    assert not logic.is_in_window(datetime(2026, 10, 6, 21, 0), "21:00", "07:30", mon)
+    # Sonntag bis Donnerstag: Freitagmorgen gesperrt, Freitagabend frei,
+    # Sonntagabend gesperrt.
+    school = ["sun", "mon", "tue", "wed", "thu"]
+    assert logic.is_in_window(datetime(2026, 10, 9, 6, 0), "21:00", "07:30", school)
+    assert not logic.is_in_window(datetime(2026, 10, 9, 22, 0), "21:00", "07:30", school)
+    assert not logic.is_in_window(datetime(2026, 10, 10, 6, 0), "21:00", "07:30", school)
+    assert logic.is_in_window(datetime(2026, 10, 11, 21, 30), "21:00", "07:30", school)

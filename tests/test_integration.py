@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import timedelta
 
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import entity_registry as er
+from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,
+    async_fire_time_changed,
     async_mock_service,
 )
 
@@ -225,6 +228,45 @@ async def test_outside_time_window_nothing_happens(hass: HomeAssistant) -> None:
     await _tv_on(hass)
     await asyncio.sleep(1.2)
     assert not notify
+    assert not turn_off
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def _setup_with_tv_on(hass: HomeAssistant, **overrides) -> MockConfigEntry:
+    hass.states.async_set(TV, "on")
+    entry = MockConfigEntry(
+        domain=DOMAIN, title="Test TV", data={}, options={**BASE_OPTIONS, **overrides}
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    return entry
+
+
+def _next_midnight():
+    return (dt_util.now() + timedelta(days=1)).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+
+
+async def test_turn_off_at_window_start(hass: HomeAssistant) -> None:
+    turn_off = async_mock_service(hass, "media_player", "turn_off")
+    entry = await _setup_with_tv_on(hass, turn_off_at_start=True)
+    assert not turn_off
+
+    async_fire_time_changed(hass, _next_midnight())
+    await hass.async_block_till_done()
+    assert len(turn_off) >= 1
+    assert turn_off[0].data["entity_id"] == [TV]
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_no_turn_off_at_window_start_by_default(hass: HomeAssistant) -> None:
+    turn_off = async_mock_service(hass, "media_player", "turn_off")
+    entry = await _setup_with_tv_on(hass)
+
+    async_fire_time_changed(hass, _next_midnight())
+    await hass.async_block_till_done()
     assert not turn_off
     assert await hass.config_entries.async_unload(entry.entry_id)
 

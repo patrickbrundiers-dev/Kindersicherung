@@ -24,7 +24,8 @@ Pro Einrichtung entsteht ein Gerät mit eigener Sperre. Du kannst die Integratio
 | Zahlencode (optional) | 4 bis 12 Ziffern, den du selbst festlegst. Ist ein Code gesetzt, bestätigst du nur noch über das Feld **Code eingeben** (Entität `text`, z. B. im Dashboard oder in der App) oder den Bestätigen-Button auf dem Handy. Der Bestätigungs-Schalter und zusätzliche Schalter zählen dann nicht mehr. Ein falscher Code beendet die Abfrage sofort, schaltet den Fernseher aus und zählt als Fehlversuch. Der Code liegt im Klartext in der Konfiguration von Home Assistant. |
 | Nachricht | Text der Benachrichtigung. |
 | Hinweis bei Sperre | Bei Sperre geht eine Nachricht an alle Ziele („gesperrt bis 17:42 Uhr“). Wird währenddessen ein Fernseher eingeschaltet, sagen die notify-Entitäten (z. B. Sprachausgabe) die Sperrzeit an, höchstens einmal pro Minute. |
-| Aktiv ab / bis, Wochentage | Zeitfenster der Abfrage. Gleiche Start- und Endzeit bedeutet ganztägig, Start nach Ende ein Fenster über Mitternacht. Der Wochentag bezieht sich auf den aktuellen Tag. Standard: 00:00 bis 19:00 an allen Tagen. |
+| Aktiv ab / bis, Wochentage | Zeitfenster der Abfrage. Gleiche Start- und Endzeit bedeutet ganztägig, Start nach Ende ein Fenster über Mitternacht. Bei einem Fenster über Mitternacht zählt der Morgen zum Wochentag des Abends: 21:00 bis 07:30 mit Sonntag bis Donnerstag sperrt Sonntagabend bis Freitagmorgen, Freitagabend bleibt frei. Sonst bezieht sich der Wochentag auf den aktuellen Tag. Standard: 00:00 bis 19:00 an allen Tagen. |
+| Bei Beginn des Zeitfensters ausschalten | Läuft zu „Aktiv ab“ noch ein Fernseher, wird er ausgeschaltet. Wer ihn danach einschaltet, muss bestätigen. Standard: aus. |
 | Zeit zum Bestätigen | Standard 30 Sekunden. |
 | Fehlversuche bis zur Sperre | Standard 3. |
 | Dauer der Sperre | Standard 30 Minuten. |

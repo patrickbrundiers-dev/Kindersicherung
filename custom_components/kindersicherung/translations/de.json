@@ -20,17 +20,19 @@
           "confirm_timeout": "Zeit zum Bestätigen",
           "max_attempts": "Fehlversuche bis zur Sperre",
           "lock_minutes": "Dauer der Sperre",
-          "attempt_reset_minutes": "Fehlversuche verfallen nach (0 = nie)"
+          "attempt_reset_minutes": "Fehlversuche verfallen nach (0 = nie)",
+          "turn_off_at_start": "Bei Beginn des Zeitfensters ausschalten"
         },
         "data_description": {
           "media_players": "Wird so ein Fernseher eingeschaltet, muss bestätigt werden, sonst wird er wieder ausgeschaltet.",
           "notify_services": "Dienste wie mobile_app_patrick. Mit Bestätigen-Button, wenn aktiviert.",
           "notify_entities": "Entitäten für notify.send_message, z. B. eine Sprachausgabe im Wohnzimmer.",
           "confirm_entities": "Optional: vorhandene input_boolean oder Schalter, die ebenfalls bestätigen können (z. B. dein bisheriger Schalter).",
-          "time_start": "Außerhalb des Zeitfensters wird nicht abgefragt. Gleiche Start- und Endzeit bedeutet ganztägig.",
+          "time_start": "Außerhalb des Zeitfensters wird nicht abgefragt. Gleiche Start- und Endzeit bedeutet ganztägig. Liegt das Ende vor dem Start (z. B. 21:00 bis 07:30), gilt der Morgen noch zum Wochentag des Abends.",
           "attempt_reset_minutes": "Liegt der letzte Fehlversuch länger zurück, beginnt die Zählung neu.",
           "announce_lock": "Bei Sperre eine Nachricht an alle Ziele senden. Wird währenddessen ein Fernseher eingeschaltet, sagen die notify-Entitäten (z. B. Sprachausgabe) einmal pro Minute die Sperrzeit an.",
-          "confirm_code": "4 bis 12 Ziffern. Ist ein Code gesetzt, wird nur noch über das Feld „Code eingeben“ oder den Bestätigen-Button auf dem Handy bestätigt. Schalter und zusätzliche Bestätigungs-Schalter zählen dann nicht mehr. Ein falscher Code zählt als Fehlversuch."
+          "confirm_code": "4 bis 12 Ziffern. Ist ein Code gesetzt, wird nur noch über das Feld „Code eingeben“ oder den Bestätigen-Button auf dem Handy bestätigt. Schalter und zusätzliche Bestätigungs-Schalter zählen dann nicht mehr. Ein falscher Code zählt als Fehlversuch.",
+          "turn_off_at_start": "Läuft zu „Aktiv ab“ noch ein Fernseher, wird er ausgeschaltet. Wer ihn danach wieder einschaltet, muss bestätigen."
         }
       }
     },
@@ -59,17 +61,19 @@
           "confirm_timeout": "Zeit zum Bestätigen",
           "max_attempts": "Fehlversuche bis zur Sperre",
           "lock_minutes": "Dauer der Sperre",
-          "attempt_reset_minutes": "Fehlversuche verfallen nach (0 = nie)"
+          "attempt_reset_minutes": "Fehlversuche verfallen nach (0 = nie)",
+          "turn_off_at_start": "Bei Beginn des Zeitfensters ausschalten"
         },
         "data_description": {
           "media_players": "Wird so ein Fernseher eingeschaltet, muss bestätigt werden, sonst wird er wieder ausgeschaltet.",
           "notify_services": "Dienste wie mobile_app_patrick. Mit Bestätigen-Button, wenn aktiviert.",
           "notify_entities": "Entitäten für notify.send_message, z. B. eine Sprachausgabe im Wohnzimmer.",
           "confirm_entities": "Optional: vorhandene input_boolean oder Schalter, die ebenfalls bestätigen können.",
-          "time_start": "Außerhalb des Zeitfensters wird nicht abgefragt. Gleiche Start- und Endzeit bedeutet ganztägig.",
+          "time_start": "Außerhalb des Zeitfensters wird nicht abgefragt. Gleiche Start- und Endzeit bedeutet ganztägig. Liegt das Ende vor dem Start (z. B. 21:00 bis 07:30), gilt der Morgen noch zum Wochentag des Abends.",
           "attempt_reset_minutes": "Liegt der letzte Fehlversuch länger zurück, beginnt die Zählung neu.",
           "announce_lock": "Bei Sperre eine Nachricht an alle Ziele senden. Wird währenddessen ein Fernseher eingeschaltet, sagen die notify-Entitäten (z. B. Sprachausgabe) einmal pro Minute die Sperrzeit an.",
-          "confirm_code": "4 bis 12 Ziffern. Ist ein Code gesetzt, wird nur noch über das Feld „Code eingeben“ oder den Bestätigen-Button auf dem Handy bestätigt. Schalter und zusätzliche Bestätigungs-Schalter zählen dann nicht mehr. Ein falscher Code zählt als Fehlversuch."
+          "confirm_code": "4 bis 12 Ziffern. Ist ein Code gesetzt, wird nur noch über das Feld „Code eingeben“ oder den Bestätigen-Button auf dem Handy bestätigt. Schalter und zusätzliche Bestätigungs-Schalter zählen dann nicht mehr. Ein falscher Code zählt als Fehlversuch.",
+          "turn_off_at_start": "Läuft zu „Aktiv ab“ noch ein Fernseher, wird er ausgeschaltet. Wer ihn danach wieder einschaltet, muss bestätigen."
         }
       }
     },

@@ -40,6 +40,7 @@ from .const import (
     CONF_NOTIFY_SERVICES,
     CONF_TIME_END,
     CONF_TIME_START,
+    CONF_TURN_OFF_AT_START,
     CONF_WEEKDAYS,
     DEFAULT_ACTIONABLE,
     DEFAULT_ANNOUNCE_LOCK,
@@ -50,6 +51,7 @@ from .const import (
     DEFAULT_MESSAGE,
     DEFAULT_TIME_END,
     DEFAULT_TIME_START,
+    DEFAULT_TURN_OFF_AT_START,
     DOMAIN,
     WEEKDAYS,
 )
@@ -149,6 +151,10 @@ def _settings_schema(hass: HomeAssistant, current: dict[str, Any]) -> dict[Any, 
                 mode=SelectSelectorMode.LIST,
             )
         ),
+        vol.Required(
+            CONF_TURN_OFF_AT_START,
+            default=current.get(CONF_TURN_OFF_AT_START, DEFAULT_TURN_OFF_AT_START),
+        ): BooleanSelector(),
         vol.Required(
             CONF_CONFIRM_TIMEOUT,
             default=current.get(CONF_CONFIRM_TIMEOUT, DEFAULT_CONFIRM_TIMEOUT),

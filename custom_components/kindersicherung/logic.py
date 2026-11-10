@@ -21,19 +21,24 @@ def is_in_window(
     """Prüft, ob `now` im Zeitfenster und an einem gewählten Wochentag liegt.
 
     - start == end bedeutet: ganztägig.
-    - start > end bedeutet: Fenster über Mitternacht (z. B. 20:00-06:00).
-    - Der Wochentag bezieht sich immer auf den aktuellen Tag.
+    - start > end bedeutet: Fenster über Mitternacht (z. B. 21:00-07:30).
+      Der Teil nach Mitternacht gehört zum Starttag: Ist nur Montag gewählt,
+      gilt das Fenster von Montag 21:00 bis Dienstag 07:30.
+    - Sonst bezieht sich der Wochentag auf den aktuellen Tag.
     """
-    if WEEKDAY_KEYS[now.weekday()] not in weekdays:
-        return False
     start_t = parse_time(start)
     end_t = parse_time(end)
     current = now.time().replace(tzinfo=None)
+    today = WEEKDAY_KEYS[now.weekday()]
     if start_t == end_t:
-        return True
+        return today in weekdays
     if start_t < end_t:
-        return start_t <= current < end_t
-    return current >= start_t or current < end_t
+        return today in weekdays and start_t <= current < end_t
+    if current >= start_t:
+        return today in weekdays
+    if current < end_t:
+        return WEEKDAY_KEYS[(now.weekday() - 1) % 7] in weekdays
+    return False
 
 
 def attempts_after_failure(
