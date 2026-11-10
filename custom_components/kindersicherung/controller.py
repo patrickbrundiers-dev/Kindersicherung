@@ -69,6 +69,7 @@ from .const import (
     EVENT_FAILED,
     EVENT_LOCKED,
     EVENT_UNLOCKED,
+    IDLE_APPS,
     INACTIVE_STATES,
     MOBILE_APP_ACTION_EVENT,
     POWER_OFF_STATES,
@@ -532,7 +533,7 @@ class KindersicherungController:
         """Einmal pro Minute: zählen, warnen, ausschalten, Apps prüfen."""
         changed = self._roll_screen_time_day(now)
         active = self._active_players()
-        if active:
+        if self._watching_players(active):
             self.screen_time_minutes += 1
             changed = True
 
@@ -620,6 +621,9 @@ class KindersicherungController:
                 _LOGGER.warning("Home-Taste über %s fehlgeschlagen", remote, exc_info=True)
         if not closed:
             await self._async_turn_off([media_player])
+        self.stats["apps_closed"] += 1
+        self._store.async_delay_save(self._data, SCREEN_TIME_SAVE_DELAY)
+        self._notify_listeners()
         now = time.monotonic()
         if now - self._last_app_notice >= BLOCK_NOTICE_INTERVAL:
             self._last_app_notice = now
@@ -963,6 +967,30 @@ class KindersicherungController:
     # ------------------------------------------------------------------
     # Geräte ausschalten
     # ------------------------------------------------------------------
+    @property
+    def status(self) -> str:
+        """Zusammengefasster Zustand für das Dashboard."""
+        if not self.enabled:
+            return "off"
+        if self.locked:
+            return "locked"
+        if self.exception_active:
+            return "exception"
+        if self.limit_reached and self.daily_limit > 0:
+            return "limit"
+        if self.in_window:
+            return "paused" if self.paused else "window"
+        return "free"
+
+    def _watching_players(self, active: list[str]) -> list[str]:
+        """Laufende Fernseher ohne Bildschirmschoner (zählen als Bildschirmzeit)."""
+        return [
+            entity_id
+            for entity_id in active
+            if (state := self.hass.states.get(entity_id)) is not None
+            and not app_matches(self._app_of(state), IDLE_APPS)
+        ]
+
     def _active_players(self) -> list[str]:
         return [
             entity_id

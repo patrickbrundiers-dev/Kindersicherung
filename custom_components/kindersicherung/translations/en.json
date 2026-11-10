@@ -176,6 +176,21 @@
       },
       "app_release_until": {
         "name": "Apps released until"
+      },
+      "status": {
+        "name": "Status",
+        "state": {
+          "off": "Off",
+          "locked": "Locked",
+          "exception": "Exception",
+          "limit": "Daily limit reached",
+          "window": "Restricted hours",
+          "paused": "Restricted hours paused",
+          "free": "Free"
+        }
+      },
+      "apps_closed": {
+        "name": "Apps closed"
       }
     },
     "button": {

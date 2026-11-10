@@ -176,6 +176,21 @@
       },
       "app_release_until": {
         "name": "Apps freigegeben bis"
+      },
+      "status": {
+        "name": "Status",
+        "state": {
+          "off": "Aus",
+          "locked": "Gesperrt",
+          "exception": "Ausnahme",
+          "limit": "Tageslimit erreicht",
+          "window": "Sperrzeit",
+          "paused": "Sperrzeit pausiert",
+          "free": "Frei"
+        }
+      },
+      "apps_closed": {
+        "name": "Apps beendet"
       }
     },
     "button": {
