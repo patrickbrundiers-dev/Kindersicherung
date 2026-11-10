@@ -28,11 +28,11 @@ def is_active(hass: HomeAssistant, entity_id: str) -> bool:
 
 
 async def async_wait_until(
-    condition: Callable[[], bool], timeout: float, interval: float = POLL_INTERVAL
+    condition: Callable[[], bool], seconds: float, interval: float = POLL_INTERVAL
 ) -> bool:
-    """Warte bis `condition()` wahr ist, höchstens `timeout` Sekunden."""
+    """Warte bis `condition()` wahr ist, höchstens `seconds` Sekunden."""
     loop = asyncio.get_running_loop()
-    deadline = loop.time() + timeout
+    deadline = loop.time() + seconds
     while True:
         if condition():
             return True
