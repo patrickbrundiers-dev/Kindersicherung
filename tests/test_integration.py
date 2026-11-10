@@ -933,3 +933,179 @@ async def test_diagnostics_hide_code_and_logbook_event(hass: HomeAssistant) -> N
     await asyncio.sleep(0.05)
     assert any(e.data["action"] == "turn_off" and e.data["reason"] == "locked" for e in events)
     assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_school_nights_with_workday_and_holiday_calendar(hass: HomeAssistant) -> None:
+    from homeassistant.core import SupportsResponse
+
+    today = dt_util.now().date()
+    tomorrow = today + timedelta(days=1)
+
+    async def check_date(call):
+        day = call.data["check_date"]
+        return {call.data["entity_id"]: {"workday": day.weekday() < 7}}
+
+    async def get_events(call):
+        # Morgen sind Ferien (ganztägig)
+        return {
+            call.data["entity_id"]: {
+                "events": [
+                    {
+                        "start": tomorrow.isoformat(),
+                        "end": (tomorrow + timedelta(days=1)).isoformat(),
+                        "summary": "Herbstferien",
+                    }
+                ]
+            }
+        }
+
+    hass.services.async_register(
+        "workday", "check_date", check_date, supports_response=SupportsResponse.ONLY
+    )
+    hass.services.async_register(
+        "calendar", "get_events", get_events, supports_response=SupportsResponse.ONLY
+    )
+    entry = await _setup(
+        hass,
+        time_start="00:00:00",
+        time_end="00:00:00",  # ganztägig, bezieht sich auf den Tag selbst
+        school_nights_only=True,
+        workday_entity="binary_sensor.arbeitstag",
+        holiday_calendars=["calendar.schulferien"],
+        daily_limit_minutes=60,
+        daily_limit_holiday=0,
+    )
+    controller = entry.runtime_data
+    await hass.async_block_till_done()
+    assert not controller.is_school_day(tomorrow)
+    assert controller.is_school_day(today)
+    assert controller.in_window  # heute Schultag, ganztägig
+    diag = controller.diagnostics()
+    assert diag["school_days"][tomorrow.isoformat()] is False
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_holiday_and_weekend_limits(hass: HomeAssistant) -> None:
+    hass.states.async_set("input_boolean.ferien", "on")
+    entry = await _setup(
+        hass,
+        weekdays=[],
+        daily_limit_minutes=60,
+        daily_limit_weekend=120,
+        daily_limit_holiday=0,
+        pause_entities=["input_boolean.ferien"],
+    )
+    controller = entry.runtime_data
+    assert controller.holiday_today
+    assert controller.daily_limit == 0
+    hass.states.async_set("input_boolean.ferien", "off")
+    await hass.async_block_till_done()
+    expected = 120 if dt_util.now().weekday() >= 5 else 60
+    assert controller.daily_limit == expected
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_bonus_extends_limit_and_window(hass: HomeAssistant) -> None:
+    turn_off = async_mock_service(hass, "media_player", "turn_off")
+    entry = await _setup(hass, daily_limit_minutes=30, bonus_minutes=15)
+    controller = entry.runtime_data
+    controller.screen_time_minutes = 30
+    controller.limit_reached = True
+    bonus = _entity(hass, entry, "button", "bonus")
+    status = _entity(hass, entry, "sensor", "status")
+
+    await hass.services.async_call("button", "press", {"entity_id": bonus}, blocking=True)
+    await hass.async_block_till_done()
+    assert controller.daily_limit == 45
+    assert not controller.limit_reached
+    assert controller.bonus_active
+    assert hass.states.get(status).state == "bonus"
+
+    # In der Bonuszeit braucht Einschalten keine Bestätigung
+    await _tv_on(hass)
+    assert not controller.waiting_for_confirmation
+    await asyncio.sleep(1.2)
+    assert not turn_off
+
+    # zweiter Druck verlängert
+    until = controller.bonus_until
+    await controller.async_bonus()
+    assert controller.bonus_until == until + timedelta(minutes=15)
+    assert controller.daily_limit == 60
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_confirmation_expires_after_valid_minutes(hass: HomeAssistant) -> None:
+    turn_off = async_mock_service(hass, "media_player", "turn_off")
+    notify = async_mock_service(hass, "notify", "send_message")
+    entry = await _setup(
+        hass, confirm_valid_minutes=60, warn_minutes=10, notify_entities=["notify.sprechen"]
+    )
+    controller = entry.runtime_data
+    await _tv_on(hass)
+    await controller.async_confirm("switch")
+    await asyncio.sleep(0.05)
+    session = controller.sessions[TV]
+    assert session.status == "confirmed"
+    assert session.confirmed_until is not None
+
+    # Vorwarnung 10 Minuten vorher
+    warn_at = dt_util.as_local(session.confirmed_until) - timedelta(minutes=10)
+    await controller.async_minute_tick(warn_at)
+    assert any("endet die Fernseh-Freigabe" in c.data["message"] for c in notify)
+
+    # abgelaufen: neue Abfrage, ohne Antwort aus
+    session.confirmed_until = dt_util.utcnow() - timedelta(seconds=1)
+    await controller.async_minute_tick(dt_util.now())
+    assert controller.waiting_for_confirmation
+    await asyncio.sleep(1.2)
+    assert turn_off
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_allowed_app_is_not_closed(hass: HomeAssistant) -> None:
+    turn_off = async_mock_service(hass, "media_player", "turn_off")
+    entry = await _setup_with_tv_on(
+        hass, weekdays=[], blocked_apps=["youtube"], allowed_apps=["tvkids"],
+        app_block_always=True,
+    )
+    hass.states.async_set(TV, "playing", {"app_id": "com.google.android.youtube.tvkids"})
+    await hass.async_block_till_done()
+    await asyncio.sleep(0.3)
+    assert not turn_off
+    assert entry.runtime_data.stats["apps_closed"] == 0
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_options_new_fields(hass: HomeAssistant) -> None:
+    entry = await _setup(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "limit"}
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {"daily_limit_minutes": 90, "daily_limit_weekend": 0, "bonus_minutes": 15},
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.options["daily_limit_weekend"] == 0
+    assert "daily_limit_holiday" not in entry.options
+    await hass.async_block_till_done()
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "schedule"}
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {"time_start": "21:00:00", "time_end": "07:30:00", "weekdays": WEEKDAYS,
+         "school_nights_only": True, "workday_entity": "binary_sensor.arbeitstag",
+         "holiday_calendars": ["calendar.schulferien"], "at_window_start": "off",
+         "warn_minutes": 10, "time_start_2": "22:30:00", "time_end_2": "08:00:00"},
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.options["school_nights_only"] is True
+    assert entry.options["workday_entity"] == "binary_sensor.arbeitstag"
+    await hass.async_block_till_done()
+    assert await hass.config_entries.async_unload(entry.entry_id)

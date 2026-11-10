@@ -45,11 +45,18 @@ Die häufigsten Werte lassen sich außerdem direkt auf der Geräteseite oder im 
 | Zweites Zeitfenster | Optional, z. B. am Wochenende 22:30 bis 08:00. Ohne gewählte Wochentage ist es aus. |
 | Gesperrte Apps | Teil des App-Namens oder der App-ID, Vorauswahl bei neuen Einträgen: `youtube`. Die App wird sofort beendet, auch nach einer normalen Bestätigung. Bei Android TV drückt die Integration Home auf der zugehörigen `remote`-Entität, ohne Fernbedienungs-Entität wird der Fernseher ausgeschaltet. |
 | Gesperrte Apps immer beenden | An (Standard bei neuen Einträgen): jederzeit. Aus: nur im Zeitfenster. Freigabe mit dem Zahlencode im Feld **Code eingeben**, mit **App freigeben** in der Handy-Benachrichtigung (kommt, sobald eine App beendet wurde) oder durch eine Bestätigung per Code bzw. Handy. Ein falscher Code zählt als Fehlversuch. |
+| Erlaubte Apps | Ausnahmen von der App-Sperre, z. B. `tvkids` für YouTube Kids, obwohl `youtube` gesperrt ist. |
 | Dauer einer App-Freigabe | Standard 60 Minuten. |
 | Zeitfenster aussetzen, wenn an | Kalender (z. B. Schulferien), `input_boolean` oder `binary_sensor`. Solange eine davon an ist, gelten die Zeitfenster nicht. Tageslimit und Sperre bleiben. |
+| Nur vor Schultagen | Das erste Zeitfenster gilt nur am Abend vor einem Schultag (Beginn ab 12 Uhr, z. B. 21:00 bis 07:30) bzw. an Schultagen (Beginn vormittags). Die Wochentage zählen dann nicht. So bleibt der Abend vor einem Feiertag oder vor den Ferien frei, und der letzte Ferienabend vor Schulbeginn ist gesperrt. |
+| Werktag-Sensor | Optional: `binary_sensor` der Workday-Integration. Die Integration fragt ihn mit `workday.check_date` für jeden einzelnen Tag ab. Ohne Sensor gilt Montag bis Freitag. |
+| Kalender mit Schulferien | Optional: jeder Termin darin ist ein Ferientag (kein Schultag, Tageslimit für Ferien). Die Kalender werden alle 30 Minuten neu gelesen. |
 | Vorwarnung | Minuten vor Beginn des Zeitfensters und vor Ende des Tageslimits, wenn ein Fernseher läuft. 0 = aus. |
 | Tageslimit Bildschirmzeit | Minuten pro Tag über alle Fernseher des Eintrags. Läuft nur der Bildschirmschoner (z. B. Google TV „dreamx“), zählt die Minute nicht. Ist es erreicht, wird ausgeschaltet, und bis Mitternacht muss jedes Einschalten bestätigt werden. 0 = aus. |
+| Tageslimit Samstag und Sonntag, Tageslimit in den Ferien | Optional. Leer = wie an anderen Tagen, 0 = kein Limit. Ferien (Ferienkalender oder Pause-Entität an) gehen vor dem Wochenende. |
+| Bonuszeit pro Druck | Standard 30 Minuten, siehe Button **Bonuszeit**. |
 | Zeit zum Bestätigen | Standard 30 Sekunden. |
+| Bestätigung gilt | 0 (Standard) = bis der Fernseher länger aus ist. Sonst so viele Minuten, danach (mit Vorwarnung) neue Abfrage, ohne Antwort geht der Fernseher aus. |
 | Fehlversuche bis zur Sperre | Standard 3. |
 | Dauer der Sperre | Standard 30 Minuten. |
 | Fehlversuche verfallen nach | Standard 60 Minuten, 0 bedeutet nie. |
@@ -63,10 +70,11 @@ Die häufigsten Werte lassen sich außerdem direkt auf der Geräteseite oder im 
 - `binary_sensor` **Gesperrt** mit den Attributen `lock_until`, `attempts`, `max_attempts`.
 - `sensor` **Fehlversuche** und **Gesperrt bis** (Zeitstempel).
 - `sensor` **Statistik**: *Bestätigungen*, *Zeitüberschreitungen*, *Falsche Codes*, *Sperren* und *Apps beendet* als Gesamtzähler. Sie speichern Langzeitstatistik, im Dashboard zeigt eine „Statistik-Diagramm“-Karte (Statistic graph card) mit Zeitraum „Woche“ oder „Tag“ die Summen pro Zeitraum.
-- `sensor` **Status**: Zustand auf einen Blick, *Frei*, *Sperrzeit*, *Sperrzeit pausiert*, *Gesperrt*, *Ausnahme*, *Tageslimit erreicht* oder *Aus*. Die Attribute zeigen, bis wann eine Sperre oder Ausnahme gilt (`until`), ob Apps gerade gesperrt sind (`apps_blocked`) und die Bildschirmzeit heute. Gut geeignet als erste Zeile einer Dashboard-Karte.
+- `sensor` **Status**: Zustand auf einen Blick, *Frei*, *Sperrzeit*, *Sperrzeit pausiert*, *Gesperrt*, *Ausnahme*, *Tageslimit erreicht*, *Bonuszeit* oder *Aus*. Die Attribute zeigen, bis wann eine Sperre oder Ausnahme gilt (`until`), ob Apps gerade gesperrt sind (`apps_blocked`) die Bildschirmzeit heute, das heutige Tageslimit und ob heute Ferien sind. Gut geeignet als erste Zeile einer Dashboard-Karte.
 - `button` **Entsperren** und **Jetzt sperren**.
 - `button` **Strafe**: sperrt alle Fernseher des Eintrags für die eingestellte Dauer (Standard 24 Stunden), auch außerhalb des Zeitfensters. Jedes Einschalten wird sofort rückgängig gemacht, eine Ausnahme oder App-Freigabe endet. Eine längere laufende Sperre wird nicht verkürzt. Nur **Entsperren** hebt die Strafe vorher auf. Die Sperre übersteht einen Neustart.
 - `button` **Heute erlauben**: setzt Zeitfenster, App-Sperre und Tageslimit bis Mitternacht aus, bzw. bis zum Ende eines Fensters, das heute noch läuft oder beginnt (bei 21:00 bis 07:30 also bis zum nächsten Morgen). **Ausnahme beenden** hebt das wieder auf, ebenso eine App-Freigabe. Eine Sperre nach Fehlversuchen bleibt bestehen.
+- `button` **Bonuszeit**: verlängert das Tageslimit heute um die eingestellten Minuten und erlaubt in der Sperrzeit so lange Fernsehen ohne Abfrage (gesperrte Apps bleiben gesperrt, wenn sie immer gesperrt sind). Mehrmals drücken verlängert weiter. Kurz vor Ende kommt die Vorwarnung. Dauer im Dashboard über **Bonuszeit** (`number`), ebenso **Bestätigung gilt**.
 - `sensor` **Ausnahme bis** und **Apps freigegeben bis** (Zeitstempel) und **Bildschirmzeit heute** (Minuten, mit `daily_limit` und `limit_reached`).
 - `binary_sensor` **Regeln aktiv**: an, solange Zeitfenster oder Tageslimit gelten (Attribute `in_window`, `paused`, `exception_active`, `limit_reached`).
 

@@ -31,6 +31,14 @@ CONF_PENALTY_HOURS = "penalty_hours"
 CONF_PAUSE_ENTITIES = "pause_entities"
 CONF_WARN_MINUTES = "warn_minutes"
 CONF_DAILY_LIMIT_MINUTES = "daily_limit_minutes"
+CONF_DAILY_LIMIT_WEEKEND = "daily_limit_weekend"
+CONF_DAILY_LIMIT_HOLIDAY = "daily_limit_holiday"
+CONF_BONUS_MINUTES = "bonus_minutes"
+CONF_SCHOOL_NIGHTS = "school_nights_only"
+CONF_WORKDAY_ENTITY = "workday_entity"
+CONF_HOLIDAY_CALENDARS = "holiday_calendars"
+CONF_CONFIRM_VALID_MINUTES = "confirm_valid_minutes"
+CONF_ALLOWED_APPS = "allowed_apps"
 
 CONF_CONFIRM_TIMEOUT = "confirm_timeout"
 CONF_MAX_ATTEMPTS = "max_attempts"
@@ -42,7 +50,7 @@ STAT_KEYS = ("confirmations", "timeouts", "wrong_codes", "locks", "apps_closed")
 # Bildschirmschoner und ähnliche Leerlauf-Apps: zählen nicht als Bildschirmzeit.
 IDLE_APPS = ["dreamx", "screensaver", "daydream", "backdrop"]
 
-STATUS_OPTIONS = ["off", "locked", "exception", "limit", "window", "paused", "free"]
+STATUS_OPTIONS = ["off", "locked", "exception", "limit", "bonus", "window", "paused", "free"]
 
 WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
@@ -64,6 +72,8 @@ DEFAULT_BLOCKED_APPS = ["youtube"]
 DEFAULT_APP_BLOCK_ALWAYS = True
 DEFAULT_APP_RELEASE_MINUTES = 60
 DEFAULT_PENALTY_HOURS = 24
+DEFAULT_BONUS_MINUTES = 30
+DEFAULT_CONFIRM_VALID_MINUTES = 0
 
 # Vorschläge für gesperrte Apps; Teil des App-Namens oder der App-ID genügt.
 APP_SUGGESTIONS = ["youtube", "netflix", "disney", "amazon", "twitch", "tiktok"]

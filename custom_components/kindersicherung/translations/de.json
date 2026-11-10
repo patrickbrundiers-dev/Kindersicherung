@@ -71,7 +71,10 @@
           "time_start_2": "Zweites Fenster ab",
           "time_end_2": "Zweites Fenster bis",
           "weekdays_2": "Wochentage zweites Fenster",
-          "pause_entities": "Zeitfenster aussetzen, wenn an (z. B. Ferien)"
+          "pause_entities": "Zeitfenster aussetzen, wenn an (z. B. Ferien)",
+          "school_nights_only": "Nur vor Schultagen",
+          "workday_entity": "Werktag-Sensor (optional)",
+          "holiday_calendars": "Kalender mit Schulferien (optional)"
         },
         "data_description": {
           "time_start": "Außerhalb des Zeitfensters wird nicht abgefragt. Gleiche Start- und Endzeit bedeutet ganztägig.",
@@ -79,7 +82,10 @@
           "at_window_start": "Gilt zu „Aktiv ab“ und wenn eine Ausnahme oder Pause endet. Wer einen ausgeschalteten Fernseher wieder einschaltet, muss bestätigen.",
           "warn_minutes": "So viele Minuten vor Beginn des Zeitfensters und vor Ende des Tageslimits kommt eine Nachricht, wenn ein Fernseher läuft.",
           "weekdays_2": "Optional, z. B. andere Zeiten am Wochenende. Ohne Wochentage ist das zweite Fenster aus.",
-          "pause_entities": "Ist eine dieser Entitäten an (Kalender mit Ferien-Termin, input_boolean, binary_sensor), gelten die Zeitfenster nicht. Tageslimit und Sperre bleiben."
+          "pause_entities": "Ist eine dieser Entitäten an (Kalender mit Ferien-Termin, input_boolean, binary_sensor), gelten die Zeitfenster nicht. Tageslimit und Sperre bleiben.",
+          "school_nights_only": "Das erste Zeitfenster gilt nur am Abend vor einem Schultag (bei Beginn ab 12 Uhr) bzw. an Schultagen (Beginn vormittags). Die Wochentage oben zählen dann nicht. Schultag: Werktag laut Sensor (ohne Sensor Montag bis Freitag) und nicht in den Ferien.",
+          "workday_entity": "Sensor der Workday-Integration, z. B. binary_sensor.arbeitstag. Gefragt wird nach jedem einzelnen Tag, Feiertage zählen also richtig.",
+          "holiday_calendars": "Jeder Termin in diesen Kalendern gilt als Ferien: kein Schultag und das Tageslimit für Ferien."
         }
       },
       "apps": {
@@ -87,21 +93,29 @@
         "data": {
           "blocked_apps": "Gesperrte Apps",
           "app_block_always": "Gesperrte Apps immer beenden",
-          "app_release_minutes": "Dauer einer App-Freigabe"
+          "app_release_minutes": "Dauer einer App-Freigabe",
+          "allowed_apps": "Erlaubte Apps (Ausnahmen)"
         },
         "data_description": {
           "blocked_apps": "Teil des App-Namens oder der App-ID, z. B. youtube. Die App wird sofort beendet (Home-Taste über die Fernbedienungs-Entität, sonst Fernseher aus), auch nach einer normalen Bestätigung.",
           "app_block_always": "An: die Apps werden jederzeit beendet. Aus: nur im Zeitfenster. Freigeben könnt ihr sie mit dem Zahlencode im Feld „Code eingeben“ oder mit „App freigeben“ in der Handy-Benachrichtigung.",
-          "app_release_minutes": "So lange bleiben gesperrte Apps nach einer Freigabe erlaubt."
+          "app_release_minutes": "So lange bleiben gesperrte Apps nach einer Freigabe erlaubt.",
+          "allowed_apps": "Passt eine App hierzu, wird sie nie beendet, z. B. tvkids für YouTube Kids, obwohl youtube gesperrt ist."
         }
       },
       "limit": {
         "title": "Tageslimit",
         "data": {
-          "daily_limit_minutes": "Tageslimit Bildschirmzeit (0 = aus)"
+          "daily_limit_minutes": "Tageslimit Bildschirmzeit (0 = aus)",
+          "daily_limit_weekend": "Tageslimit Samstag und Sonntag (optional)",
+          "daily_limit_holiday": "Tageslimit in den Ferien (optional)",
+          "bonus_minutes": "Bonuszeit pro Druck"
         },
         "data_description": {
-          "daily_limit_minutes": "Gezählt wird jede Minute, in der ein Fernseher an ist. Ist das Limit erreicht, wird ausgeschaltet und bis Mitternacht muss jedes Einschalten bestätigt werden."
+          "daily_limit_minutes": "Gezählt wird jede Minute, in der ein Fernseher an ist. Ist das Limit erreicht, wird ausgeschaltet und bis Mitternacht muss jedes Einschalten bestätigt werden.",
+          "daily_limit_weekend": "Leer = wie an anderen Tagen, 0 = kein Limit.",
+          "daily_limit_holiday": "Gilt an Ferientagen (Ferienkalender oder Pause-Entität an). Leer = wie sonst, 0 = kein Limit.",
+          "bonus_minutes": "Der Button „Bonuszeit“ verlängert das Tageslimit und erlaubt in der Sperrzeit so viele Minuten ohne Abfrage."
         }
       },
       "confirm": {
@@ -113,13 +127,15 @@
           "lock_minutes": "Dauer der Sperre",
           "attempt_reset_minutes": "Fehlversuche verfallen nach (0 = nie)",
           "confirm_entities": "Zusätzliche Bestätigungs-Schalter (optional)",
-          "penalty_hours": "Dauer der Strafe"
+          "penalty_hours": "Dauer der Strafe",
+          "confirm_valid_minutes": "Bestätigung gilt (0 = bis der Fernseher aus ist)"
         },
         "data_description": {
           "confirm_code": "4 bis 12 Ziffern. Ist ein Code gesetzt, wird nur noch über das Feld „Code eingeben“ oder den Bestätigen-Button auf dem Handy bestätigt. Schalter und zusätzliche Bestätigungs-Schalter zählen dann nicht mehr. Ein falscher Code zählt als Fehlversuch.",
           "attempt_reset_minutes": "Liegt der letzte Fehlversuch länger zurück, beginnt die Zählung neu.",
           "confirm_entities": "Optional: vorhandene input_boolean oder Schalter, die ebenfalls bestätigen können.",
-          "penalty_hours": "So lange sperrt der Button „Strafe“ alle Fernseher dieses Eintrags komplett. Nur „Entsperren“ hebt das vorher auf."
+          "penalty_hours": "So lange sperrt der Button „Strafe“ alle Fernseher dieses Eintrags komplett. Nur „Entsperren“ hebt das vorher auf.",
+          "confirm_valid_minutes": "Danach kommt mit der Vorwarnung eine neue Abfrage. Ohne Bestätigung geht der Fernseher aus."
         }
       }
     },
@@ -184,6 +200,7 @@
           "locked": "Gesperrt",
           "exception": "Ausnahme",
           "limit": "Tageslimit erreicht",
+          "bonus": "Bonuszeit",
           "window": "Sperrzeit",
           "paused": "Sperrzeit pausiert",
           "free": "Frei"
@@ -208,6 +225,9 @@
       },
       "penalty": {
         "name": "Strafe"
+      },
+      "bonus": {
+        "name": "Bonuszeit"
       }
     },
     "text": {
@@ -235,6 +255,12 @@
       },
       "penalty_hours": {
         "name": "Dauer Strafe"
+      },
+      "bonus_minutes": {
+        "name": "Bonuszeit"
+      },
+      "confirm_valid": {
+        "name": "Bestätigung gilt"
       }
     }
   },

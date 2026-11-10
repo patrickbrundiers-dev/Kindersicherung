@@ -25,6 +25,7 @@ async def async_setup_entry(
             AllowTodayButton(controller),
             EndExceptionButton(controller),
             PenaltyButton(controller),
+            BonusButton(controller),
         ]
     )
 
@@ -87,3 +88,15 @@ class PenaltyButton(KindersicherungEntity, ButtonEntity):
     async def async_press(self) -> None:
         """Strafe auslösen."""
         await self._controller.async_penalty()
+
+
+class BonusButton(KindersicherungEntity, ButtonEntity):
+    """Bonuszeit: Tageslimit und Sperrzeit um die eingestellten Minuten verlängern."""
+
+    def __init__(self, controller: KindersicherungController) -> None:
+        """Initialisiere den Button."""
+        super().__init__(controller, "bonus")
+
+    async def async_press(self) -> None:
+        """Bonuszeit geben."""
+        await self._controller.async_bonus()

@@ -240,3 +240,66 @@ def test_weekday_lists_are_identical():
     from custom_components.kindersicherung.const import WEEKDAYS
 
     assert WEEKDAYS == logic.WEEKDAY_KEYS
+
+
+def test_school_night_windows():
+    from datetime import date
+
+    # Ferien ab Montag 2026-10-12; Feiertag Freitag 2026-10-09
+    def school(day):
+        return day.weekday() < 5 and day != date(2026, 10, 9) and day < date(2026, 10, 12)
+
+    def days(day):
+        return school(logic.school_window_day("21:00", day))
+
+    # Mittwochabend vor Schultag: gesperrt, auch Donnerstagmorgen
+    assert logic.is_in_window(datetime(2026, 10, 7, 21, 30), "21:00", "07:30", days)
+    assert logic.is_in_window(datetime(2026, 10, 8, 6, 0), "21:00", "07:30", days)
+    # Donnerstagabend vor Feiertag: frei
+    assert not logic.is_in_window(datetime(2026, 10, 8, 22, 0), "21:00", "07:30", days)
+    # Sonntagabend vor Ferienbeginn: frei
+    assert not logic.is_in_window(datetime(2026, 10, 11, 22, 0), "21:00", "07:30", days)
+    # Vormittags beginnendes Fenster bezieht sich auf den Tag selbst
+    assert logic.school_window_day("00:00", date(2026, 10, 7)) == date(2026, 10, 7)
+    assert logic.school_window_day("12:00", date(2026, 10, 7)) == date(2026, 10, 8)
+    # Ende einer Ausnahme folgt den Schulabenden
+    tz = UTC
+    now = datetime(2026, 10, 8, 15, 0, tzinfo=tz)
+    assert logic.exception_until(now, [("21:00", "07:30", days)]) == datetime(
+        2026, 10, 9, 0, 0, tzinfo=tz
+    )
+
+
+def test_holiday_dates():
+    from datetime import date
+
+    first = date(2026, 10, 10)
+    # ganztägig 12.10. bis einschließlich 23.10. (Ende exklusiv)
+    events = [(date(2026, 10, 12), date(2026, 10, 24))]
+    assert logic.holiday_dates(events, first, 4) == {date(2026, 10, 12), date(2026, 10, 13)}
+    # Termin mit Uhrzeit, endet um Mitternacht: Folgetag zählt nicht
+    events = [(datetime(2026, 10, 10, 0, 0), datetime(2026, 10, 11, 0, 0))]
+    assert logic.holiday_dates(events, first, 4) == {date(2026, 10, 10)}
+
+
+def test_daily_limit_for_and_allowed_apps():
+    assert logic.daily_limit_for(90, None, None, True, True) == 90
+    assert logic.daily_limit_for(90, 180, None, True, False) == 180
+    assert logic.daily_limit_for(90, 180, 0, True, True) == 0
+    assert logic.daily_limit_for(90, 180, 240, False, True) == 240
+    assert logic.app_blocked("com.google.android.youtube.tv", ["youtube"], ["tvkids"])
+    assert not logic.app_blocked("com.google.android.youtube.tvkids", ["youtube"], ["tvkids"])
+    assert not logic.app_blocked("com.netflix.ninja", ["youtube"], [])
+
+
+def test_bonus_status():
+    rs = logic.RuleState
+    d = logic.evaluate(rs(in_window=True, bonus_active=True))
+    assert (d.status, d.restricted) == ("bonus", False)
+    d = logic.evaluate(rs(in_window=True, bonus_active=True, limit_reached=True))
+    assert (d.status, d.restricted) == ("limit", True)
+    d = logic.evaluate(rs(in_window=True, bonus_active=True, has_blocked_apps=True))
+    assert not d.apps_blocked
+    d = logic.evaluate(rs(in_window=True, bonus_active=True, has_blocked_apps=True,
+                          app_block_always=True))
+    assert d.apps_blocked
