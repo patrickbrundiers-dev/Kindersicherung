@@ -20,6 +20,12 @@
         "state": {
           "on": "mdi:lock-clock"
         }
+      },
+      "restricted": {
+        "default": "mdi:television-classic",
+        "state": {
+          "on": "mdi:television-classic-off"
+        }
       }
     },
     "sensor": {
@@ -40,6 +46,12 @@
       },
       "locks": {
         "default": "mdi:lock-clock"
+      },
+      "screen_time": {
+        "default": "mdi:timer-sand"
+      },
+      "exception_until": {
+        "default": "mdi:calendar-check"
       }
     },
     "button": {
@@ -48,6 +60,12 @@
       },
       "lock_now": {
         "default": "mdi:lock-clock"
+      },
+      "allow_today": {
+        "default": "mdi:party-popper"
+      },
+      "end_exception": {
+        "default": "mdi:calendar-remove"
       }
     },
     "text": {

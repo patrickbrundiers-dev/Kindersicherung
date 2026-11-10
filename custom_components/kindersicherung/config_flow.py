@@ -8,6 +8,7 @@ import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.data_entry_flow import section
 from homeassistant.helpers.selector import (
     BooleanSelector,
     EntitySelector,
@@ -25,6 +26,20 @@ from homeassistant.helpers.selector import (
 )
 
 from .const import (
+    APP_SUGGESTIONS,
+    CONF_BLOCKED_APPS,
+    CONF_DAILY_LIMIT_MINUTES,
+    CONF_PAUSE_ENTITIES,
+    CONF_TIME_END_2,
+    CONF_TIME_START_2,
+    CONF_WARN_MINUTES,
+    CONF_WEEKDAYS_2,
+    DEFAULT_DAILY_LIMIT_MINUTES,
+    DEFAULT_TIME_END_2,
+    DEFAULT_TIME_START_2,
+    DEFAULT_WARN_MINUTES,
+    SECTION_RULES,
+    SECTION_SECOND_WINDOW,
     CONF_ACTIONABLE,
     CONF_ANNOUNCE_LOCK,
     CONF_ATTEMPT_RESET_MINUTES,
@@ -63,13 +78,19 @@ LIST_KEYS = (
     CONF_CONFIRM_ENTITIES,
     CONF_NOTIFY_ENTITIES,
     CONF_NOTIFY_SERVICES,
+    CONF_WEEKDAYS_2,
+    CONF_BLOCKED_APPS,
+    CONF_PAUSE_ENTITIES,
 )
 INT_KEYS = (
     CONF_CONFIRM_TIMEOUT,
     CONF_MAX_ATTEMPTS,
     CONF_LOCK_MINUTES,
     CONF_ATTEMPT_RESET_MINUTES,
+    CONF_WARN_MINUTES,
+    CONF_DAILY_LIMIT_MINUTES,
 )
+SECTIONS = (SECTION_SECOND_WINDOW, SECTION_RULES)
 
 
 def _notify_service_names(hass: HomeAssistant) -> list[str]:
@@ -89,6 +110,17 @@ def _number(minimum: int, maximum: int, unit: str) -> NumberSelector:
             step=1,
             unit_of_measurement=unit,
             mode=NumberSelectorMode.BOX,
+        )
+    )
+
+
+def _weekday_selector() -> SelectSelector:
+    return SelectSelector(
+        SelectSelectorConfig(
+            options=WEEKDAYS,
+            multiple=True,
+            translation_key="weekdays",
+            mode=SelectSelectorMode.LIST,
         )
     )
 
@@ -143,14 +175,7 @@ def _settings_schema(hass: HomeAssistant, current: dict[str, Any]) -> dict[Any, 
         ): TimeSelector(),
         vol.Required(
             CONF_WEEKDAYS, default=current.get(CONF_WEEKDAYS, WEEKDAYS)
-        ): SelectSelector(
-            SelectSelectorConfig(
-                options=WEEKDAYS,
-                multiple=True,
-                translation_key="weekdays",
-                mode=SelectSelectorMode.LIST,
-            )
-        ),
+        ): _weekday_selector(),
         vol.Required(
             CONF_TURN_OFF_AT_START,
             default=current.get(CONF_TURN_OFF_AT_START, DEFAULT_TURN_OFF_AT_START),
@@ -173,7 +198,69 @@ def _settings_schema(hass: HomeAssistant, current: dict[str, Any]) -> dict[Any, 
                 CONF_ATTEMPT_RESET_MINUTES, DEFAULT_ATTEMPT_RESET_MINUTES
             ),
         ): _number(0, 1440, "min"),
+        vol.Optional(SECTION_SECOND_WINDOW, default={}): section(
+            vol.Schema(
+                {
+                    vol.Required(
+                        CONF_TIME_START_2,
+                        default=current.get(CONF_TIME_START_2, DEFAULT_TIME_START_2),
+                    ): TimeSelector(),
+                    vol.Required(
+                        CONF_TIME_END_2,
+                        default=current.get(CONF_TIME_END_2, DEFAULT_TIME_END_2),
+                    ): TimeSelector(),
+                    vol.Optional(
+                        CONF_WEEKDAYS_2, default=current.get(CONF_WEEKDAYS_2, [])
+                    ): _weekday_selector(),
+                }
+            ),
+            {"collapsed": not current.get(CONF_WEEKDAYS_2)},
+        ),
+        vol.Optional(SECTION_RULES, default={}): section(
+            vol.Schema(
+                {
+                    vol.Optional(
+                        CONF_BLOCKED_APPS, default=current.get(CONF_BLOCKED_APPS, [])
+                    ): SelectSelector(
+                        SelectSelectorConfig(
+                            options=APP_SUGGESTIONS,
+                            multiple=True,
+                            custom_value=True,
+                            mode=SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_PAUSE_ENTITIES,
+                        default=current.get(CONF_PAUSE_ENTITIES, []),
+                    ): EntitySelector(
+                        EntitySelectorConfig(
+                            domain=["binary_sensor", "input_boolean", "calendar", "switch"],
+                            multiple=True,
+                        )
+                    ),
+                    vol.Required(
+                        CONF_WARN_MINUTES,
+                        default=current.get(CONF_WARN_MINUTES, DEFAULT_WARN_MINUTES),
+                    ): _number(0, 120, "min"),
+                    vol.Required(
+                        CONF_DAILY_LIMIT_MINUTES,
+                        default=current.get(
+                            CONF_DAILY_LIMIT_MINUTES, DEFAULT_DAILY_LIMIT_MINUTES
+                        ),
+                    ): _number(0, 1440, "min"),
+                }
+            ),
+            {"collapsed": True},
+        ),
     }
+
+
+def _flatten(user_input: dict[str, Any]) -> dict[str, Any]:
+    """Felder aus den Abschnitten auf die oberste Ebene holen."""
+    data = dict(user_input)
+    for key in SECTIONS:
+        data.update(data.pop(key, None) or {})
+    return data
 
 
 def _validate(user_input: dict[str, Any]) -> dict[str, str]:
@@ -199,7 +286,7 @@ def _normalize(user_input: dict[str, Any]) -> dict[str, Any]:
         if key in data:
             data[key] = int(data[key])
     for key in LIST_KEYS:
-        data[key] = list(data.get(key) or [])
+        data[key] = [value for value in (data.get(key) or []) if str(value).strip()]
     return data
 
 
@@ -219,8 +306,9 @@ class KindersicherungConfigFlow(ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         """Erster und einziger Schritt."""
         errors: dict[str, str] = {}
-        current: dict[str, Any] = dict(user_input or {})
+        current: dict[str, Any] = _flatten(user_input or {})
         if user_input is not None:
+            user_input = current
             errors = _validate(user_input)
             if not errors:
                 title = user_input.get(CONF_NAME) or DEFAULT_NAME
@@ -249,6 +337,7 @@ class KindersicherungOptionsFlow(OptionsFlow):
         errors: dict[str, str] = {}
         current: dict[str, Any] = dict(self.config_entry.options)
         if user_input is not None:
+            user_input = _flatten(user_input)
             errors = _validate(user_input)
             if not errors:
                 return self.async_create_entry(data=_normalize(user_input))

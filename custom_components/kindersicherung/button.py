@@ -1,4 +1,4 @@
-"""Buttons: Entsperren und Jetzt sperren."""
+"""Buttons: Entsperren, Jetzt sperren, Heute erlauben, Ausnahme beenden."""
 
 from __future__ import annotations
 
@@ -18,7 +18,14 @@ async def async_setup_entry(
 ) -> None:
     """Lege die Buttons an."""
     controller = entry.runtime_data
-    async_add_entities([UnlockButton(controller), LockNowButton(controller)])
+    async_add_entities(
+        [
+            UnlockButton(controller),
+            LockNowButton(controller),
+            AllowTodayButton(controller),
+            EndExceptionButton(controller),
+        ]
+    )
 
 
 class UnlockButton(KindersicherungEntity, ButtonEntity):
@@ -43,3 +50,27 @@ class LockNowButton(KindersicherungEntity, ButtonEntity):
     async def async_press(self) -> None:
         """Sperre sofort."""
         await self._controller.async_lock()
+
+
+class AllowTodayButton(KindersicherungEntity, ButtonEntity):
+    """Setzt Zeitfenster, App-Sperre und Tageslimit für heute aus."""
+
+    def __init__(self, controller: KindersicherungController) -> None:
+        """Initialisiere den Button."""
+        super().__init__(controller, "allow_today")
+
+    async def async_press(self) -> None:
+        """Ausnahme für heute."""
+        await self._controller.async_allow_today()
+
+
+class EndExceptionButton(KindersicherungEntity, ButtonEntity):
+    """Beendet eine laufende Ausnahme."""
+
+    def __init__(self, controller: KindersicherungController) -> None:
+        """Initialisiere den Button."""
+        super().__init__(controller, "end_exception")
+
+    async def async_press(self) -> None:
+        """Ausnahme beenden."""
+        await self._controller.async_end_exception()

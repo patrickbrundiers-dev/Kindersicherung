@@ -10,6 +10,7 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorStateClass,
 )
+from homeassistant.const import UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
@@ -30,6 +31,8 @@ async def async_setup_entry(
         [
             AttemptsSensor(controller),
             LockUntilSensor(controller),
+            ScreenTimeSensor(controller),
+            ExceptionUntilSensor(controller),
             *(StatSensor(controller, key) for key in STAT_KEYS),
         ]
     )
@@ -89,3 +92,45 @@ class StatSensor(KindersicherungEntity, SensorEntity):
     def native_value(self) -> int:
         """Bisherige Anzahl."""
         return self._controller.stats[self._key]
+
+
+class ScreenTimeSensor(KindersicherungEntity, SensorEntity):
+    """Bildschirmzeit heute (alle Fernseher dieses Eintrags zusammen)."""
+
+    _attr_device_class = SensorDeviceClass.DURATION
+    _attr_native_unit_of_measurement = UnitOfTime.MINUTES
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+
+    def __init__(self, controller: KindersicherungController) -> None:
+        """Initialisiere den Sensor."""
+        super().__init__(controller, "screen_time")
+
+    @property
+    def native_value(self) -> int:
+        """Minuten heute."""
+        return self._controller.screen_time_minutes
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Tageslimit und ob es erreicht ist."""
+        controller = self._controller
+        return {
+            "daily_limit": controller.daily_limit or None,
+            "limit_reached": controller.limit_reached,
+        }
+
+
+class ExceptionUntilSensor(KindersicherungEntity, SensorEntity):
+    """Ende der Ausnahme „Heute erlauben“."""
+
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+
+    def __init__(self, controller: KindersicherungController) -> None:
+        """Initialisiere den Sensor."""
+        super().__init__(controller, "exception_until")
+
+    @property
+    def native_value(self) -> datetime | None:
+        """Ende der Ausnahme oder None."""
+        controller = self._controller
+        return controller.exception_until if controller.exception_active else None

@@ -20,6 +20,17 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    CONF_BLOCKED_APPS,
+    CONF_DAILY_LIMIT_MINUTES,
+    CONF_PAUSE_ENTITIES,
+    CONF_TIME_END_2,
+    CONF_TIME_START_2,
+    CONF_WARN_MINUTES,
+    CONF_WEEKDAYS_2,
+    DEFAULT_DAILY_LIMIT_MINUTES,
+    DEFAULT_TIME_END_2,
+    DEFAULT_TIME_START_2,
+    DEFAULT_WARN_MINUTES,
     CONF_ACTIONABLE,
     CONF_ANNOUNCE_LOCK,
     CONF_ATTEMPT_RESET_MINUTES,
@@ -59,7 +70,14 @@ from .const import (
     STORAGE_VERSION,
     WEEKDAYS,
 )
-from .logic import attempts_after_failure, is_in_window, parse_time
+from .logic import (
+    Window,
+    app_matches,
+    attempts_after_failure,
+    exception_until,
+    is_in_any_window,
+    starts_at,
+)
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -69,6 +87,7 @@ _LOGGER = logging.getLogger(__name__)
 TURN_OFF_TRIES = 3
 TURN_OFF_RETRY_DELAY = 3
 BLOCK_NOTICE_INTERVAL = 60
+SCREEN_TIME_SAVE_DELAY = 60
 
 
 class KindersicherungController:
@@ -87,6 +106,7 @@ class KindersicherungController:
         self._flow_task: asyncio.Task[None] | None = None
         self._confirm_event: asyncio.Event | None = None
         self._last_block_notice = float("-inf")
+        self._last_app_notice = float("-inf")
         self._confirm_ok = False
         self._wrong_code = False
 
@@ -96,6 +116,10 @@ class KindersicherungController:
         self.attempts = 0
         self.last_failure: datetime | None = None
         self.lock_until: datetime | None = None
+        self.exception_until: datetime | None = None
+        self.screen_time_date: str | None = None
+        self.screen_time_minutes = 0
+        self.limit_reached = False
 
     # ------------------------------------------------------------------
     # Konfiguration
@@ -140,6 +164,48 @@ class KindersicherungController:
         return int(self._opts.get(CONF_CONFIRM_TIMEOUT, DEFAULT_CONFIRM_TIMEOUT))
 
     @property
+    def windows(self) -> list[Window]:
+        """Zeitfenster (erstes immer, zweites nur mit gewählten Wochentagen)."""
+        result: list[Window] = [
+            (
+                self._opts.get(CONF_TIME_START, DEFAULT_TIME_START),
+                self._opts.get(CONF_TIME_END, DEFAULT_TIME_END),
+                list(self._opts.get(CONF_WEEKDAYS, WEEKDAYS)),
+            )
+        ]
+        if days_2 := list(self._opts.get(CONF_WEEKDAYS_2) or []):
+            result.append(
+                (
+                    self._opts.get(CONF_TIME_START_2, DEFAULT_TIME_START_2),
+                    self._opts.get(CONF_TIME_END_2, DEFAULT_TIME_END_2),
+                    days_2,
+                )
+            )
+        return result
+
+    @property
+    def blocked_apps(self) -> list[str]:
+        """Apps, die im Zeitfenster sofort beendet werden."""
+        return list(self._opts.get(CONF_BLOCKED_APPS) or [])
+
+    @property
+    def pause_entities(self) -> list[str]:
+        """Entitäten, die die Zeitfenster aussetzen (z. B. Ferien)."""
+        return list(self._opts.get(CONF_PAUSE_ENTITIES) or [])
+
+    @property
+    def warn_minutes(self) -> int:
+        """Vorwarnung in Minuten (0 = aus)."""
+        return int(self._opts.get(CONF_WARN_MINUTES, DEFAULT_WARN_MINUTES) or 0)
+
+    @property
+    def daily_limit(self) -> int:
+        """Bildschirmzeit pro Tag in Minuten (0 = aus)."""
+        return int(
+            self._opts.get(CONF_DAILY_LIMIT_MINUTES, DEFAULT_DAILY_LIMIT_MINUTES) or 0
+        )
+
+    @property
     def confirm_action_id(self) -> str:
         """Action-ID für den Bestätigen-Button der mobilen Benachrichtigung."""
         return f"{CONFIRM_ACTION_PREFIX}{self.entry.entry_id}"
@@ -157,6 +223,37 @@ class KindersicherungController:
     def locked(self) -> bool:
         """Ist die Sperre aktuell aktiv?"""
         return self.lock_until is not None and self.lock_until > dt_util.utcnow()
+
+    @property
+    def exception_active(self) -> bool:
+        """Läuft gerade eine Ausnahme („heute erlauben“)?"""
+        return (
+            self.exception_until is not None
+            and self.exception_until > dt_util.utcnow()
+        )
+
+    @property
+    def paused(self) -> bool:
+        """Setzt eine Pause-Entität (z. B. Ferien) die Zeitfenster aus?"""
+        for entity_id in self.pause_entities:
+            state = self.hass.states.get(entity_id)
+            if state is not None and state.state == "on":
+                return True
+        return False
+
+    @property
+    def in_window(self) -> bool:
+        """Liegt jetzt ein Zeitfenster an (ohne Pause und Ausnahme)?"""
+        return is_in_any_window(dt_util.now(), self.windows)
+
+    @property
+    def restricted(self) -> bool:
+        """Gelten jetzt die Regeln (Zeitfenster oder Tageslimit)?"""
+        if not self.enabled or self.exception_active:
+            return False
+        if self.limit_reached and self.daily_limit > 0:
+            return True
+        return self.in_window and not self.paused
 
     @property
     def waiting_for_confirmation(self) -> bool:
@@ -181,17 +278,22 @@ class KindersicherungController:
             update()
 
     async def _async_save(self) -> None:
-        await self._store.async_save(
-            {
-                "enabled": self.enabled,
-                "attempts": self.attempts,
-                "stats": dict(self.stats),
-                "last_failure": self.last_failure.isoformat()
-                if self.last_failure
-                else None,
-                "lock_until": self.lock_until.isoformat() if self.lock_until else None,
-            }
-        )
+        await self._store.async_save(self._data())
+
+    def _data(self) -> dict[str, Any]:
+        return {
+            "enabled": self.enabled,
+            "attempts": self.attempts,
+            "stats": dict(self.stats),
+            "last_failure": self.last_failure.isoformat() if self.last_failure else None,
+            "lock_until": self.lock_until.isoformat() if self.lock_until else None,
+            "exception_until": self.exception_until.isoformat()
+            if self.exception_until
+            else None,
+            "screen_time_date": self.screen_time_date,
+            "screen_time_minutes": self.screen_time_minutes,
+            "limit_reached": self.limit_reached,
+        }
 
     # ------------------------------------------------------------------
     # Lebenszyklus
@@ -208,6 +310,12 @@ class KindersicherungController:
             self.last_failure = dt_util.parse_datetime(raw)
         if raw := data.get("lock_until"):
             self.lock_until = dt_util.parse_datetime(raw)
+        if raw := data.get("exception_until"):
+            self.exception_until = dt_util.parse_datetime(raw)
+        self.screen_time_date = data.get("screen_time_date")
+        self.screen_time_minutes = int(data.get("screen_time_minutes") or 0)
+        self.limit_reached = bool(data.get("limit_reached", False))
+        self._roll_screen_time_day(dt_util.now())
 
         if self.lock_until is not None:
             if self.lock_until > dt_util.utcnow():
@@ -235,17 +343,9 @@ class KindersicherungController:
                 MOBILE_APP_ACTION_EVENT, self._async_notification_action
             )
         )
-        if self._opts.get(CONF_TURN_OFF_AT_START, DEFAULT_TURN_OFF_AT_START):
-            start = parse_time(self._opts.get(CONF_TIME_START, DEFAULT_TIME_START))
-            self._unsubs.append(
-                async_track_time_change(
-                    self.hass,
-                    self._async_window_started,
-                    hour=start.hour,
-                    minute=start.minute,
-                    second=start.second,
-                )
-            )
+        self._unsubs.append(
+            async_track_time_change(self.hass, self._async_minute_tick, second=0)
+        )
 
     @callback
     def async_shutdown(self) -> None:
@@ -259,6 +359,8 @@ class KindersicherungController:
         if self._flow_task is not None and not self._flow_task.done():
             self._flow_task.cancel()
         self._listeners.clear()
+        # Bildschirmzeit nicht verlieren, falls noch eine verzögerte Speicherung aussteht.
+        self._store.async_delay_save(self._data, 0)
 
     # ------------------------------------------------------------------
     # Ereignisse
@@ -274,6 +376,15 @@ class KindersicherungController:
             return
         entity_id = event.data["entity_id"]
         old = old_state.state if old_state is not None else None
+
+        if self.restricted and self._runs_blocked_app(new_state):
+            old_app = self._app_of(old_state) if old_state is not None else None
+            if old_app != self._app_of(new_state) or old in INACTIVE_STATES:
+                self.entry.async_create_task(
+                    self.hass,
+                    self._async_close_app(entity_id),
+                    "kindersicherung close blocked app",
+                )
 
         # Während der Sperre wird jedes Einschalten sofort rückgängig gemacht,
         # unabhängig von Uhrzeit und Wochentag.
@@ -293,7 +404,7 @@ class KindersicherungController:
 
         if old not in POWER_OFF_STATES:
             return
-        if not self._is_active_now():
+        if not self.restricted:
             return
         if self._flow_task is not None and not self._flow_task.done():
             return
@@ -327,26 +438,142 @@ class KindersicherungController:
                 self.hass, self.async_confirm("app"), "kindersicherung app confirm"
             )
 
+    # ------------------------------------------------------------------
+    # Minütliche Prüfung: Bildschirmzeit, Vorwarnung, Fensterbeginn, Apps
+    # ------------------------------------------------------------------
+    def _roll_screen_time_day(self, now: datetime) -> bool:
+        today = now.date().isoformat()
+        if self.screen_time_date == today:
+            return False
+        self.screen_time_date = today
+        self.screen_time_minutes = 0
+        self.limit_reached = False
+        return True
+
     @callback
-    def _async_window_started(self, _now: datetime) -> None:
-        """Zeitfenster beginnt: laufende Fernseher ausschalten (falls eingestellt)."""
-        if not self.enabled or not self._is_active_now():
-            return
-        if not (players := self._active_players()):
-            return
+    def _async_minute_tick(self, now: datetime) -> None:
         self.entry.async_create_task(
-            self.hass,
-            self._async_turn_off(players),
-            "kindersicherung turn off at window start",
+            self.hass, self.async_minute_tick(dt_util.as_local(now)), "kindersicherung tick"
         )
 
-    def _is_active_now(self) -> bool:
-        return is_in_window(
-            dt_util.now(),
-            self._opts.get(CONF_TIME_START, DEFAULT_TIME_START),
-            self._opts.get(CONF_TIME_END, DEFAULT_TIME_END),
-            list(self._opts.get(CONF_WEEKDAYS, WEEKDAYS)),
+    async def async_minute_tick(self, now: datetime) -> None:
+        """Einmal pro Minute: zählen, warnen, ausschalten, Apps prüfen."""
+        changed = self._roll_screen_time_day(now)
+        active = self._active_players()
+        if active:
+            self.screen_time_minutes += 1
+            changed = True
+
+        if self.enabled:
+            await self._async_check_limit(active)
+            if not self.exception_active and not self.paused:
+                await self._async_check_window_start(now, active)
+
+        if self.restricted and self.blocked_apps:
+            for entity_id in active:
+                state = self.hass.states.get(entity_id)
+                if state is not None and self._runs_blocked_app(state):
+                    await self._async_close_app(entity_id)
+
+        if changed:
+            self._store.async_delay_save(self._data, SCREEN_TIME_SAVE_DELAY)
+        self._notify_listeners()
+
+    async def _async_check_limit(self, active: list[str]) -> None:
+        limit = self.daily_limit
+        if limit <= 0 or self.exception_active:
+            return
+        used = self.screen_time_minutes
+        if self.warn_minutes and active and used == limit - self.warn_minutes:
+            await self._async_notify(
+                f"Noch {self.warn_minutes} Minute{'' if self.warn_minutes == 1 else 'n'} Fernsehzeit für heute."
+            )
+        if used >= limit and not self.limit_reached:
+            self.limit_reached = True
+            await self._async_save()
+            if active:
+                await self._async_notify(
+                    f"Kindersicherung {self.entry.title}: Tageslimit von {limit} Minuten erreicht."
+                )
+                await self._async_turn_off(active)
+
+    async def _async_check_window_start(self, now: datetime, active: list[str]) -> None:
+        if not active:
+            return
+        windows = self.windows
+        if self.warn_minutes and starts_at(now, windows, self.warn_minutes):
+            await self._async_notify(
+                f"In {self.warn_minutes} Minuten wird der Fernseher gesperrt."
+            )
+        if starts_at(now, windows) and self._opts.get(
+            CONF_TURN_OFF_AT_START, DEFAULT_TURN_OFF_AT_START
+        ):
+            await self._async_turn_off(active)
+
+    @staticmethod
+    def _app_of(state: Any) -> str:
+        attrs = state.attributes
+        return f"{attrs.get('app_id') or ''} {attrs.get('app_name') or ''}".strip()
+
+    def _runs_blocked_app(self, state: Any) -> bool:
+        return app_matches(self._app_of(state), self.blocked_apps)
+
+    def _remote_for(self, media_player: str) -> str | None:
+        """Fernbedienungs-Entität (remote.*) desselben Geräts, falls vorhanden."""
+        from homeassistant.helpers import entity_registry as er
+
+        registry = er.async_get(self.hass)
+        entry = registry.async_get(media_player)
+        if entry is None or entry.device_id is None:
+            return None
+        for candidate in er.async_entries_for_device(registry, entry.device_id):
+            if candidate.domain == "remote":
+                return candidate.entity_id
+        return None
+
+    async def _async_close_app(self, media_player: str) -> None:
+        """Gesperrte App beenden: Home-Taste, sonst Fernseher aus."""
+        remote = self._remote_for(media_player)
+        closed = False
+        if remote is not None:
+            try:
+                await self.hass.services.async_call(
+                    "remote",
+                    "send_command",
+                    {"entity_id": remote, "command": "HOME"},
+                    blocking=True,
+                )
+                closed = True
+            except Exception:  # noqa: BLE001
+                _LOGGER.warning("Home-Taste über %s fehlgeschlagen", remote, exc_info=True)
+        if not closed:
+            await self._async_turn_off([media_player])
+        now = time.monotonic()
+        if now - self._last_app_notice >= BLOCK_NOTICE_INTERVAL:
+            self._last_app_notice = now
+            await self._async_notify(
+                "Diese App ist gerade gesperrt.", entities_only=True
+            )
+
+    # ------------------------------------------------------------------
+    # Ausnahme „heute erlauben“
+    # ------------------------------------------------------------------
+    async def async_allow_today(self) -> None:
+        """Regeln bis Mitternacht bzw. bis zum Ende des heutigen Fensters aussetzen."""
+        until = exception_until(dt_util.now(), self.windows)
+        self.exception_until = dt_util.as_utc(until)
+        await self._async_save()
+        self._notify_listeners()
+        await self._async_notify(
+            f"Kindersicherung {self.entry.title}: heute erlaubt bis "
+            f"{dt_util.as_local(until).strftime('%d.%m. %H:%M')} Uhr."
         )
+
+    async def async_end_exception(self) -> None:
+        """Ausnahme beenden."""
+        self.exception_until = None
+        await self._async_save()
+        self._notify_listeners()
 
     # ------------------------------------------------------------------
     # Bestätigungsablauf

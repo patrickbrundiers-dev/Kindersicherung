@@ -311,3 +311,170 @@ async def test_code_confirms_and_wrong_code_fails(hass: HomeAssistant) -> None:
     # Der Code taucht nie im Zustand auf
     assert hass.states.get(code).state in ("", "unknown")
     assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+# ------------------------------------------------- Apps, Pause, Ausnahme, Limit
+YOUTUBE = {"app_id": "com.google.android.youtube.tv", "app_name": "YouTube"}
+
+
+async def test_options_flow_with_sections(hass: HomeAssistant) -> None:
+    entry = await _setup(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    options = {
+        k: v for k, v in BASE_OPTIONS.items() if k not in ("confirm_timeout",)
+    }
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            **options,
+            "confirm_timeout": 30,
+            "second_window": {
+                "time_start_2": "22:30:00",
+                "time_end_2": "08:00:00",
+                "weekdays_2": ["fri", "sat"],
+            },
+            "rules": {
+                "blocked_apps": ["youtube"],
+                "pause_entities": ["input_boolean.ferien"],
+                "warn_minutes": 10,
+                "daily_limit_minutes": 120,
+            },
+        },
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.options["weekdays_2"] == ["fri", "sat"]
+    assert entry.options["blocked_apps"] == ["youtube"]
+    assert entry.options["daily_limit_minutes"] == 120
+    assert "rules" not in entry.options
+    await hass.async_block_till_done()
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_blocked_app_without_remote_turns_tv_off(hass: HomeAssistant) -> None:
+    turn_off = async_mock_service(hass, "media_player", "turn_off")
+    entry = await _setup(hass, blocked_apps=["youtube"])
+    hass.states.async_set(TV, "on", {"app_id": "ar.tvplayer.tv"})
+    await hass.async_block_till_done()
+    # Bestätigen, damit nur die App-Sperre greift
+    await entry.runtime_data.async_confirm("switch")
+    await hass.async_block_till_done()
+    assert not turn_off
+
+    hass.states.async_set(TV, "playing", YOUTUBE)
+    await hass.async_block_till_done()
+    await asyncio.sleep(0.05)
+    assert len(turn_off) >= 1
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_blocked_app_uses_remote_home(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import device_registry as dr
+
+    send_command = async_mock_service(hass, "remote", "send_command")
+    turn_off = async_mock_service(hass, "media_player", "turn_off")
+    tv_entry = MockConfigEntry(domain="androidtv_remote")
+    tv_entry.add_to_hass(hass)
+    device = dr.async_get(hass).async_get_or_create(
+        config_entry_id=tv_entry.entry_id, identifiers={("androidtv_remote", "tv1")}
+    )
+    ent_reg = er.async_get(hass)
+    player = ent_reg.async_get_or_create(
+        "media_player", "androidtv_remote", "tv1", device_id=device.id
+    ).entity_id
+    remote = ent_reg.async_get_or_create(
+        "remote", "androidtv_remote", "tv1", device_id=device.id
+    ).entity_id
+
+    hass.states.async_set(player, "off")
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Leonie",
+        data={},
+        options={**BASE_OPTIONS, "media_players": [player], "blocked_apps": ["youtube"]},
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    hass.states.async_set(player, "playing", YOUTUBE)
+    await hass.async_block_till_done()
+    await asyncio.sleep(0.05)
+    assert send_command and send_command[0].data["entity_id"] == remote
+    assert send_command[0].data["command"] == "HOME"
+    await asyncio.sleep(1.2)  # Bestätigung läuft ab
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    assert turn_off  # wegen fehlender Bestätigung
+
+
+async def test_pause_entity_suspends_window(hass: HomeAssistant) -> None:
+    turn_off = async_mock_service(hass, "media_player", "turn_off")
+    hass.states.async_set("input_boolean.ferien", "on")
+    entry = await _setup(hass, pause_entities=["input_boolean.ferien"])
+    restricted = _entity(hass, entry, "binary_sensor", "restricted")
+    assert hass.states.get(restricted).state == "off"
+    await _tv_on(hass)
+    await asyncio.sleep(1.2)
+    assert not turn_off
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_allow_today_and_end_exception(hass: HomeAssistant) -> None:
+    turn_off = async_mock_service(hass, "media_player", "turn_off")
+    entry = await _setup(hass)
+    allow = _entity(hass, entry, "button", "allow_today")
+    end = _entity(hass, entry, "button", "end_exception")
+    until = _entity(hass, entry, "sensor", "exception_until")
+
+    await hass.services.async_call("button", "press", {"entity_id": allow}, blocking=True)
+    await hass.async_block_till_done()
+    assert hass.states.get(until).state not in ("unknown", "unavailable")
+    await _tv_on(hass)
+    await asyncio.sleep(1.2)
+    assert not turn_off
+
+    await hass.services.async_call("button", "press", {"entity_id": end}, blocking=True)
+    await hass.async_block_till_done()
+    assert hass.states.get(until).state == "unknown"
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_daily_limit_turns_off_and_requires_confirmation(hass: HomeAssistant) -> None:
+    turn_off = async_mock_service(hass, "media_player", "turn_off")
+    notify = async_mock_service(hass, "notify", "send_message")
+    entry = await _setup_with_tv_on(
+        hass,
+        weekdays=[],
+        daily_limit_minutes=3,
+        warn_minutes=1,
+        notify_entities=["notify.sprechen"],
+    )
+    controller = entry.runtime_data
+    screen_time = _entity(hass, entry, "sensor", "screen_time")
+    now = dt_util.now()
+    for minute in range(2):
+        await controller.async_minute_tick(now + timedelta(minutes=minute))
+    await hass.async_block_till_done()
+    assert hass.states.get(screen_time).state == "2"
+    assert any("Noch 1 Minute " in c.data["message"] for c in notify)
+    assert not turn_off
+
+    await controller.async_minute_tick(now + timedelta(minutes=2))
+    await hass.async_block_till_done()
+    assert controller.limit_reached
+    assert controller.restricted
+    assert turn_off
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_warning_before_window_start(hass: HomeAssistant) -> None:
+    notify = async_mock_service(hass, "notify", "send_message")
+    async_mock_service(hass, "media_player", "turn_off")
+    entry = await _setup_with_tv_on(
+        hass, time_start="21:00:00", time_end="07:30:00", warn_minutes=10,
+        notify_entities=["notify.sprechen"],
+    )
+    moment = dt_util.now().replace(hour=20, minute=50, second=0, microsecond=0)
+    await entry.runtime_data.async_minute_tick(moment)
+    await hass.async_block_till_done()
+    assert any("In 10 Minuten" in c.data["message"] for c in notify)
+    assert await hass.config_entries.async_unload(entry.entry_id)

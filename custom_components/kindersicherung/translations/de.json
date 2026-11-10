@@ -33,6 +33,35 @@
           "announce_lock": "Bei Sperre eine Nachricht an alle Ziele senden. Wird währenddessen ein Fernseher eingeschaltet, sagen die notify-Entitäten (z. B. Sprachausgabe) einmal pro Minute die Sperrzeit an.",
           "confirm_code": "4 bis 12 Ziffern. Ist ein Code gesetzt, wird nur noch über das Feld „Code eingeben“ oder den Bestätigen-Button auf dem Handy bestätigt. Schalter und zusätzliche Bestätigungs-Schalter zählen dann nicht mehr. Ein falscher Code zählt als Fehlversuch.",
           "turn_off_at_start": "Läuft zu „Aktiv ab“ noch ein Fernseher, wird er ausgeschaltet. Wer ihn danach wieder einschaltet, muss bestätigen."
+        },
+        "sections": {
+          "second_window": {
+            "name": "Zweites Zeitfenster",
+            "description": "Optional, z. B. andere Zeiten am Wochenende. Ohne gewählte Wochentage ist es aus.",
+            "data": {
+              "time_start_2": "Aktiv ab",
+              "time_end_2": "Aktiv bis",
+              "weekdays_2": "Wochentage"
+            },
+            "data_description": {
+              "weekdays_2": "Wie beim ersten Fenster: Über Mitternacht zählt der Morgen zum Abend davor."
+            }
+          },
+          "rules": {
+            "name": "Apps, Ferien, Vorwarnung, Tageslimit",
+            "data": {
+              "blocked_apps": "Gesperrte Apps im Zeitfenster",
+              "pause_entities": "Zeitfenster aussetzen, wenn an (z. B. Ferien)",
+              "warn_minutes": "Vorwarnung (0 = aus)",
+              "daily_limit_minutes": "Tageslimit Bildschirmzeit (0 = aus)"
+            },
+            "data_description": {
+              "blocked_apps": "Teil des App-Namens oder der App-ID, z. B. youtube. Im Zeitfenster wird die App auch nach einer Bestätigung sofort beendet (Home-Taste über die Fernbedienungs-Entität, sonst Fernseher aus).",
+              "pause_entities": "Ist eine dieser Entitäten an (Kalender mit Ferien-Termin, input_boolean, binary_sensor), gelten die Zeitfenster nicht. Tageslimit und Sperre bleiben.",
+              "warn_minutes": "So viele Minuten vor Beginn des Zeitfensters und vor Ende des Tageslimits kommt eine Nachricht, wenn ein Fernseher läuft.",
+              "daily_limit_minutes": "Gezählt wird jede Minute, in der ein Fernseher an ist. Ist das Limit erreicht, wird ausgeschaltet und bis Mitternacht muss jedes Einschalten bestätigt werden."
+            }
+          }
         }
       }
     },
@@ -74,6 +103,35 @@
           "announce_lock": "Bei Sperre eine Nachricht an alle Ziele senden. Wird währenddessen ein Fernseher eingeschaltet, sagen die notify-Entitäten (z. B. Sprachausgabe) einmal pro Minute die Sperrzeit an.",
           "confirm_code": "4 bis 12 Ziffern. Ist ein Code gesetzt, wird nur noch über das Feld „Code eingeben“ oder den Bestätigen-Button auf dem Handy bestätigt. Schalter und zusätzliche Bestätigungs-Schalter zählen dann nicht mehr. Ein falscher Code zählt als Fehlversuch.",
           "turn_off_at_start": "Läuft zu „Aktiv ab“ noch ein Fernseher, wird er ausgeschaltet. Wer ihn danach wieder einschaltet, muss bestätigen."
+        },
+        "sections": {
+          "second_window": {
+            "name": "Zweites Zeitfenster",
+            "description": "Optional, z. B. andere Zeiten am Wochenende. Ohne gewählte Wochentage ist es aus.",
+            "data": {
+              "time_start_2": "Aktiv ab",
+              "time_end_2": "Aktiv bis",
+              "weekdays_2": "Wochentage"
+            },
+            "data_description": {
+              "weekdays_2": "Wie beim ersten Fenster: Über Mitternacht zählt der Morgen zum Abend davor."
+            }
+          },
+          "rules": {
+            "name": "Apps, Ferien, Vorwarnung, Tageslimit",
+            "data": {
+              "blocked_apps": "Gesperrte Apps im Zeitfenster",
+              "pause_entities": "Zeitfenster aussetzen, wenn an (z. B. Ferien)",
+              "warn_minutes": "Vorwarnung (0 = aus)",
+              "daily_limit_minutes": "Tageslimit Bildschirmzeit (0 = aus)"
+            },
+            "data_description": {
+              "blocked_apps": "Teil des App-Namens oder der App-ID, z. B. youtube. Im Zeitfenster wird die App auch nach einer Bestätigung sofort beendet (Home-Taste über die Fernbedienungs-Entität, sonst Fernseher aus).",
+              "pause_entities": "Ist eine dieser Entitäten an (Kalender mit Ferien-Termin, input_boolean, binary_sensor), gelten die Zeitfenster nicht. Tageslimit und Sperre bleiben.",
+              "warn_minutes": "So viele Minuten vor Beginn des Zeitfensters und vor Ende des Tageslimits kommt eine Nachricht, wenn ein Fernseher läuft.",
+              "daily_limit_minutes": "Gezählt wird jede Minute, in der ein Fernseher an ist. Ist das Limit erreicht, wird ausgeschaltet und bis Mitternacht muss jedes Einschalten bestätigt werden."
+            }
+          }
         }
       }
     },
@@ -95,6 +153,9 @@
     "binary_sensor": {
       "locked": {
         "name": "Gesperrt"
+      },
+      "restricted": {
+        "name": "Regeln aktiv"
       }
     },
     "sensor": {
@@ -115,6 +176,12 @@
       },
       "locks": {
         "name": "Sperren"
+      },
+      "screen_time": {
+        "name": "Bildschirmzeit heute"
+      },
+      "exception_until": {
+        "name": "Ausnahme bis"
       }
     },
     "button": {
@@ -123,6 +190,12 @@
       },
       "lock_now": {
         "name": "Jetzt sperren"
+      },
+      "allow_today": {
+        "name": "Heute erlauben"
+      },
+      "end_exception": {
+        "name": "Ausnahme beenden"
       }
     },
     "text": {

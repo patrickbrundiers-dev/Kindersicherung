@@ -56,3 +56,42 @@ def test_window_overnight_belongs_to_start_day():
     assert not logic.is_in_window(datetime(2026, 10, 9, 22, 0), "21:00", "07:30", school)
     assert not logic.is_in_window(datetime(2026, 10, 10, 6, 0), "21:00", "07:30", school)
     assert logic.is_in_window(datetime(2026, 10, 11, 21, 30), "21:00", "07:30", school)
+
+
+def test_intervals_and_exception():
+    from datetime import timezone
+
+    tz = timezone.utc
+    school = ["sun", "mon", "tue", "wed", "thu"]
+    windows = [("21:00", "07:30", school)]
+    # Dienstag 15:00: Ausnahme gilt bis Mittwoch 07:30
+    now = datetime(2026, 10, 6, 15, 0, tzinfo=tz)
+    assert logic.exception_until(now, windows) == datetime(2026, 10, 7, 7, 30, tzinfo=tz)
+    # Mittwoch 06:00 (noch im Fenster von Dienstag): bis Donnerstag 07:30,
+    # weil das heutige Abendfenster noch beginnt
+    now = datetime(2026, 10, 7, 6, 0, tzinfo=tz)
+    assert logic.exception_until(now, windows) == datetime(2026, 10, 8, 7, 30, tzinfo=tz)
+    # Freitag 15:00: kein Fenster mehr, also bis Mitternacht
+    now = datetime(2026, 10, 9, 15, 0, tzinfo=tz)
+    assert logic.exception_until(now, windows) == datetime(2026, 10, 10, 0, 0, tzinfo=tz)
+
+
+def test_starts_at_and_second_window():
+    from datetime import timezone
+
+    tz = timezone.utc
+    windows = [("21:00", "07:30", ["mon"]), ("22:30", "08:00", ["sat"])]
+    assert logic.starts_at(datetime(2026, 10, 5, 21, 0, 0, tzinfo=tz), windows)
+    assert logic.starts_at(datetime(2026, 10, 5, 20, 50, tzinfo=tz), windows, 10)
+    assert not logic.starts_at(datetime(2026, 10, 6, 21, 0, tzinfo=tz), windows)
+    assert logic.starts_at(datetime(2026, 10, 10, 22, 30, tzinfo=tz), windows)
+    assert logic.is_in_any_window(datetime(2026, 10, 11, 7, 0), windows)
+    assert not logic.is_in_any_window(datetime(2026, 10, 11, 9, 0), windows)
+
+
+def test_app_matches():
+    assert logic.app_matches("com.google.android.youtube.tv YouTube", ["youtube"])
+    assert logic.app_matches("com.netflix.ninja", ["YouTube", "netflix"])
+    assert not logic.app_matches("ar.tvplayer.tv", ["youtube"])
+    assert not logic.app_matches("", ["youtube"])
+    assert not logic.app_matches("youtube", [" "])

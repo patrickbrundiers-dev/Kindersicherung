@@ -33,6 +33,35 @@
           "announce_lock": "Send a message to all targets when locked. If a TV is switched on meanwhile, notify entities (e.g. speech output) announce the lock time, at most once per minute.",
           "confirm_code": "4 to 12 digits. When a code is set, only the 'Enter code' field or the confirm button on the phone confirms. The switch and additional confirmation switches no longer count. A wrong code counts as a failed attempt.",
           "turn_off_at_start": "TVs still running at \"Active from\" are turned off. Turning one on again requires confirmation."
+        },
+        "sections": {
+          "second_window": {
+            "name": "Second time window",
+            "description": "Optional, e.g. other times on weekends. Off without selected weekdays.",
+            "data": {
+              "time_start_2": "Active from",
+              "time_end_2": "Active until",
+              "weekdays_2": "Weekdays"
+            },
+            "data_description": {
+              "weekdays_2": "As for the first window: past midnight, the morning belongs to the evening before."
+            }
+          },
+          "rules": {
+            "name": "Apps, holidays, warning, daily limit",
+            "data": {
+              "blocked_apps": "Blocked apps in the time window",
+              "pause_entities": "Suspend time windows while on (e.g. holidays)",
+              "warn_minutes": "Warning (0 = off)",
+              "daily_limit_minutes": "Daily screen time limit (0 = off)"
+            },
+            "data_description": {
+              "blocked_apps": "Part of the app name or app ID, e.g. youtube. In the time window the app is closed immediately, even after confirmation (home key via the remote entity, otherwise TV off).",
+              "pause_entities": "While one of these entities is on (calendar with a holiday event, input_boolean, binary_sensor), the time windows do not apply. Daily limit and lock stay.",
+              "warn_minutes": "This many minutes before the time window starts and before the daily limit ends, a message is sent if a TV is on.",
+              "daily_limit_minutes": "Every minute a TV is on counts. Once the limit is reached, TVs are turned off and every power-on needs confirmation until midnight."
+            }
+          }
         }
       }
     },
@@ -74,6 +103,35 @@
           "announce_lock": "Send a message to all targets when locked. If a TV is switched on meanwhile, notify entities (e.g. speech output) announce the lock time, at most once per minute.",
           "confirm_code": "4 to 12 digits. When a code is set, only the 'Enter code' field or the confirm button on the phone confirms. The switch and additional confirmation switches no longer count. A wrong code counts as a failed attempt.",
           "turn_off_at_start": "TVs still running at \"Active from\" are turned off. Turning one on again requires confirmation."
+        },
+        "sections": {
+          "second_window": {
+            "name": "Second time window",
+            "description": "Optional, e.g. other times on weekends. Off without selected weekdays.",
+            "data": {
+              "time_start_2": "Active from",
+              "time_end_2": "Active until",
+              "weekdays_2": "Weekdays"
+            },
+            "data_description": {
+              "weekdays_2": "As for the first window: past midnight, the morning belongs to the evening before."
+            }
+          },
+          "rules": {
+            "name": "Apps, holidays, warning, daily limit",
+            "data": {
+              "blocked_apps": "Blocked apps in the time window",
+              "pause_entities": "Suspend time windows while on (e.g. holidays)",
+              "warn_minutes": "Warning (0 = off)",
+              "daily_limit_minutes": "Daily screen time limit (0 = off)"
+            },
+            "data_description": {
+              "blocked_apps": "Part of the app name or app ID, e.g. youtube. In the time window the app is closed immediately, even after confirmation (home key via the remote entity, otherwise TV off).",
+              "pause_entities": "While one of these entities is on (calendar with a holiday event, input_boolean, binary_sensor), the time windows do not apply. Daily limit and lock stay.",
+              "warn_minutes": "This many minutes before the time window starts and before the daily limit ends, a message is sent if a TV is on.",
+              "daily_limit_minutes": "Every minute a TV is on counts. Once the limit is reached, TVs are turned off and every power-on needs confirmation until midnight."
+            }
+          }
         }
       }
     },
@@ -95,6 +153,9 @@
     "binary_sensor": {
       "locked": {
         "name": "Locked"
+      },
+      "restricted": {
+        "name": "Rules active"
       }
     },
     "sensor": {
@@ -115,6 +176,12 @@
       },
       "locks": {
         "name": "Locks"
+      },
+      "screen_time": {
+        "name": "Screen time today"
+      },
+      "exception_until": {
+        "name": "Exception until"
       }
     },
     "button": {
@@ -123,6 +190,12 @@
       },
       "lock_now": {
         "name": "Lock now"
+      },
+      "allow_today": {
+        "name": "Allow today"
+      },
+      "end_exception": {
+        "name": "End exception"
       }
     },
     "text": {
