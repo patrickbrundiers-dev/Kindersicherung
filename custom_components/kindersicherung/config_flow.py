@@ -56,6 +56,7 @@ from .const import (
     CONF_NOTIFY_SERVICES,
     CONF_PAUSE_ENTITIES,
     CONF_PENALTY_HOURS,
+    CONF_PRESENCE_ENTITIES,
     CONF_SCHOOL_NIGHTS,
     CONF_TIME_END,
     CONF_TIME_END_2,
@@ -106,6 +107,7 @@ LIST_KEYS = (
     CONF_PAUSE_ENTITIES,
     CONF_HOLIDAY_CALENDARS,
     CONF_ALLOWED_APPS,
+    CONF_PRESENCE_ENTITIES,
 )
 INT_KEYS = (
     CONF_DAILY_LIMIT_WEEKEND,
@@ -151,6 +153,7 @@ DEFAULTS: dict[str, Any] = {
     CONF_SCHOOL_NIGHTS: False,
     CONF_HOLIDAY_CALENDARS: [],
     CONF_ALLOWED_APPS: [],
+    CONF_PRESENCE_ENTITIES: [],
     CONF_BONUS_MINUTES: DEFAULT_BONUS_MINUTES,
     CONF_CONFIRM_VALID_MINUTES: DEFAULT_CONFIRM_VALID_MINUTES,
 }
@@ -161,6 +164,7 @@ STEPS: dict[str, tuple[str, ...]] = {
         CONF_MEDIA_PLAYERS,
         CONF_NOTIFY_SERVICES,
         CONF_NOTIFY_ENTITIES,
+        CONF_PRESENCE_ENTITIES,
         CONF_MESSAGE,
         CONF_ACTIONABLE,
         CONF_ANNOUNCE_LOCK,
@@ -397,6 +401,12 @@ def _fields(
             _slider(0, 240, 15, "min"),
         ),
         CONF_SCHOOL_NIGHTS: lambda: (required(CONF_SCHOOL_NIGHTS), BooleanSelector()),
+        CONF_PRESENCE_ENTITIES: lambda: (
+            vol.Optional(CONF_PRESENCE_ENTITIES, default=value(CONF_PRESENCE_ENTITIES)),
+            EntitySelector(
+                EntitySelectorConfig(domain=["person", "device_tracker"], multiple=True)
+            ),
+        ),
         CONF_WORKDAY_ENTITY: lambda: (
             vol.Optional(CONF_WORKDAY_ENTITY, description=suggested(CONF_WORKDAY_ENTITY)),
             EntitySelector(EntitySelectorConfig(domain="binary_sensor")),

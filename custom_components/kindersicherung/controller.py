@@ -53,6 +53,7 @@ from .const import (
     CONF_MESSAGE,
     CONF_PAUSE_ENTITIES,
     CONF_PENALTY_HOURS,
+    CONF_PRESENCE_ENTITIES,
     CONF_SCHOOL_NIGHTS,
     CONF_TIME_END,
     CONF_TIME_END_2,
@@ -435,6 +436,30 @@ class KindersicherungController:
         return False
 
     @property
+    def presence_entities(self) -> list[str]:
+        """Personen oder Tracker: Fernsehen nur, wenn eine davon zu Hause ist."""
+        return list(self._opts.get(CONF_PRESENCE_ENTITIES) or [])
+
+    @property
+    def away(self) -> bool:
+        """Niemand der eingestellten Personen zu Hause?
+
+        Unbekannt oder nicht verfügbar zählt als zu Hause, damit ein Neustart
+        oder ein Aussetzer der Ortung den Fernseher nicht sperrt.
+        """
+        if not self.presence_entities:
+            return False
+        known = False
+        for entity_id in self.presence_entities:
+            state = self.hass.states.get(entity_id)
+            if state is None or state.state in ("unknown", "unavailable"):
+                return False
+            known = True
+            if state.state == "home":
+                return False
+        return known
+
+    @property
     def in_window(self) -> bool:
         """Liegt jetzt ein Zeitfenster an (ohne Pause und Ausnahme)?"""
         return is_in_any_window(dt_util.now(), self.windows)
@@ -459,6 +484,7 @@ class KindersicherungController:
             RuleState(
                 enabled=self.enabled,
                 locked=self.locked,
+                away=self.away,
                 exception_active=self.exception_active,
                 bonus_active=self.bonus_active,
                 in_window=self.in_window,
@@ -547,6 +573,7 @@ class KindersicherungController:
             "apps_blocked": decision.apps_blocked,
             "in_window": self.in_window,
             "paused": self.paused,
+            "away": self.away,
             "at_start": self.at_start,
             "daily_limit": self.daily_limit,
             "holiday_today": self.holiday_today,
@@ -624,10 +651,10 @@ class KindersicherungController:
                     self.hass, self.confirm_entities, self._async_confirm_entity_changed
                 )
             )
-        if self.pause_entities:
+        if watched := self.pause_entities + self.presence_entities:
             self._unsubs.append(
                 async_track_state_change_event(
-                    self.hass, self.pause_entities, self._async_rules_input_changed
+                    self.hass, watched, self._async_rules_input_changed
                 )
             )
         self._unsubs.append(
@@ -752,6 +779,9 @@ class KindersicherungController:
                 self.entry.async_create_task(
                     self.hass, self._async_announce_blocked(), "kindersicherung blocked"
                 )
+                continue
+            if decision.status == "away":
+                self._async_start_turn_off([entity_id], "away")
                 continue
             state = self.hass.states.get(entity_id)
             if (

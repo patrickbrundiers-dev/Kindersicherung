@@ -206,6 +206,7 @@ class RuleState:
 
     enabled: bool = True
     locked: bool = False
+    away: bool = False
     exception_active: bool = False
     bonus_active: bool = False
     in_window: bool = False
@@ -241,6 +242,8 @@ def evaluate(state: RuleState) -> Decision:
     )
     if state.locked:
         status = "locked"
+    elif state.away and not state.exception_active:
+        status = "away"
     elif state.exception_active:
         status = "exception"
     elif state.limit_reached:

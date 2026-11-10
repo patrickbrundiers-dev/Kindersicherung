@@ -39,6 +39,8 @@ CONF_WORKDAY_ENTITY = "workday_entity"
 CONF_HOLIDAY_CALENDARS = "holiday_calendars"
 CONF_CONFIRM_VALID_MINUTES = "confirm_valid_minutes"
 CONF_ALLOWED_APPS = "allowed_apps"
+# Fernseher nur, wenn eine dieser Personen zu Hause ist.
+CONF_PRESENCE_ENTITIES = "presence_entities"
 
 CONF_CONFIRM_TIMEOUT = "confirm_timeout"
 CONF_MAX_ATTEMPTS = "max_attempts"
@@ -50,7 +52,7 @@ STAT_KEYS = ("confirmations", "timeouts", "wrong_codes", "locks", "apps_closed")
 # Bildschirmschoner und ähnliche Leerlauf-Apps: zählen nicht als Bildschirmzeit.
 IDLE_APPS = ["dreamx", "screensaver", "daydream", "backdrop"]
 
-STATUS_OPTIONS = ["off", "locked", "exception", "limit", "bonus", "window", "paused", "free"]
+STATUS_OPTIONS = ["off", "locked", "away", "exception", "limit", "bonus", "window", "paused", "free"]
 
 WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 

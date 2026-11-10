@@ -303,3 +303,10 @@ def test_bonus_status():
     d = logic.evaluate(rs(in_window=True, bonus_active=True, has_blocked_apps=True,
                           app_block_always=True))
     assert d.apps_blocked
+
+
+def test_away_status():
+    rs = logic.RuleState
+    assert logic.evaluate(rs(away=True)).status == "away"
+    assert logic.evaluate(rs(away=True, exception_active=True)).status == "exception"
+    assert logic.evaluate(rs(away=True, locked=True)).status == "locked"
