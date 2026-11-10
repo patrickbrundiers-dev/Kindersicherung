@@ -66,7 +66,7 @@
           "time_start": "Active from",
           "time_end": "Active until",
           "weekdays": "Weekdays",
-          "turn_off_at_start": "Turn off when the time window starts",
+          "at_window_start": "When a TV is running as the rules begin",
           "warn_minutes": "Warning (0 = off)",
           "time_start_2": "Second window from",
           "time_end_2": "Second window until",
@@ -76,7 +76,7 @@
         "data_description": {
           "time_start": "Outside the time window nothing is asked. Equal start and end means all day.",
           "weekdays": "Past midnight (e.g. 21:00 to 07:30) the morning belongs to the evening before.",
-          "turn_off_at_start": "TVs still running at \"Active from\" are turned off. Turning one on again requires confirmation.",
+          "at_window_start": "Applies at \"Active from\" and when an exception or pause ends. Turning a TV on again requires confirmation.",
           "warn_minutes": "This many minutes before the time window starts and before the daily limit ends, a message is sent if a TV is on.",
           "weekdays_2": "Optional, e.g. other times on weekends. Without weekdays the second window is off.",
           "pause_entities": "While one of these entities is on (calendar with a holiday event, input_boolean, binary_sensor), the time windows do not apply. Daily limit and lock stay."
@@ -248,6 +248,13 @@
         "fri": "Friday",
         "sat": "Saturday",
         "sun": "Sunday"
+      }
+    },
+    "at_window_start": {
+      "options": {
+        "off": "Turn it off",
+        "confirm": "Ask for confirmation",
+        "none": "Let it keep running"
       }
     }
   }

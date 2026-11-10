@@ -30,14 +30,14 @@ Die häufigsten Werte lassen sich außerdem direkt auf der Geräteseite oder im 
 | Einstellung | Bedeutung |
 |---|---|
 | Fernseher | Ein oder mehrere Media Player. Die Auswahl erfolgt direkt aus deinen Geräten. |
-| notify-Dienste | Dienste wie `mobile_app_patrick`. Mit aktivierter Option erscheint ein **Bestätigen-Button** in der Benachrichtigung. |
+| notify-Dienste | Dienste wie `mobile_app_patrick`. Mit aktivierter Option erscheint ein **Bestätigen-Button** in der Benachrichtigung. Läuft die Zeit ab, verschwindet die Anfrage vom Handy, ein zu spät gedrückter Button gibt nichts frei. Anfragen, App-Hinweise und Infos ersetzen sich auf dem Handy nicht gegenseitig. |
 | notify-Entitäten | Entitäten für `notify.send_message`, z. B. eine Sprachausgabe im Wohnzimmer. |
 | Zusätzliche Bestätigungs-Schalter | Optional: vorhandene `input_boolean` oder Schalter, die ebenfalls bestätigen können (z. B. dein bisheriger Schalter, damit Dashboards weiter funktionieren). |
 | Zahlencode (optional) | 4 bis 12 Ziffern, den du selbst festlegst. Ist ein Code gesetzt, bestätigst du nur noch über das Feld **Code eingeben** (Entität `text`, z. B. im Dashboard oder in der App) oder den Bestätigen-Button auf dem Handy. Der Bestätigungs-Schalter und zusätzliche Schalter zählen dann nicht mehr. Ein falscher Code beendet die Abfrage sofort, schaltet den Fernseher aus und zählt als Fehlversuch. Der Code liegt im Klartext in der Konfiguration von Home Assistant. |
 | Nachricht | Text der Benachrichtigung. |
 | Hinweis bei Sperre | Bei Sperre geht eine Nachricht an alle Ziele („gesperrt bis 17:42 Uhr“). Wird währenddessen ein Fernseher eingeschaltet, sagen die notify-Entitäten (z. B. Sprachausgabe) die Sperrzeit an, höchstens einmal pro Minute. |
 | Aktiv ab / bis, Wochentage | Zeitfenster der Abfrage. Gleiche Start- und Endzeit bedeutet ganztägig, Start nach Ende ein Fenster über Mitternacht. Bei einem Fenster über Mitternacht zählt der Morgen zum Wochentag des Abends: 21:00 bis 07:30 mit Sonntag bis Donnerstag sperrt Sonntagabend bis Freitagmorgen, Freitagabend bleibt frei. Sonst bezieht sich der Wochentag auf den aktuellen Tag. Standard: 00:00 bis 19:00 an allen Tagen. |
-| Bei Beginn des Zeitfensters ausschalten | Läuft zu „Aktiv ab“ noch ein Fernseher, wird er ausgeschaltet. Wer ihn danach einschaltet, muss bestätigen. Standard: aus. |
+| Wenn bei Beginn der Regeln ein Fernseher läuft | *Ausschalten*, *Bestätigung verlangen* oder *Weiterlaufen lassen*. Gilt zu „Aktiv ab“ und wenn eine Ausnahme oder Pause endet, auch nach einem Neustart oder Verbindungsaussetzer um diese Zeit. Ältere Einträge übernehmen den früheren Schalter „Bei Beginn ausschalten“ (an = Ausschalten, aus = Weiterlaufen lassen), neue Einträge verlangen eine Bestätigung. |
 | Zweites Zeitfenster | Optional, z. B. am Wochenende 22:30 bis 08:00. Ohne gewählte Wochentage ist es aus. |
 | Gesperrte Apps | Teil des App-Namens oder der App-ID, Vorauswahl bei neuen Einträgen: `youtube`. Die App wird sofort beendet, auch nach einer normalen Bestätigung. Bei Android TV drückt die Integration Home auf der zugehörigen `remote`-Entität, ohne Fernbedienungs-Entität wird der Fernseher ausgeschaltet. |
 | Gesperrte Apps immer beenden | An (Standard bei neuen Einträgen): jederzeit. Aus: nur im Zeitfenster. Freigabe mit dem Zahlencode im Feld **Code eingeben**, mit **App freigeben** in der Handy-Benachrichtigung (kommt, sobald eine App beendet wurde) oder durch eine Bestätigung per Code bzw. Handy. Ein falscher Code zählt als Fehlversuch. |
@@ -66,9 +66,19 @@ Die häufigsten Werte lassen sich außerdem direkt auf der Geräteseite oder im 
 - `sensor` **Ausnahme bis** und **Apps freigegeben bis** (Zeitstempel) und **Bildschirmzeit heute** (Minuten, mit `daily_limit` und `limit_reached`).
 - `binary_sensor` **Regeln aktiv**: an, solange Zeitfenster oder Tageslimit gelten (Attribute `in_window`, `paused`, `exception_active`, `limit_reached`).
 
+## So wird geprüft
+
+Die Kindersicherung schaut auf den Zustand der Fernseher, nicht nur auf den Moment des Einschaltens. Bei jeder Änderung und jede Minute gilt: Läuft ein Fernseher, während Regeln gelten, und ist er für diese Sitzung nicht freigegeben, wird nachgefragt (bzw. bei Sperre ausgeschaltet). Das deckt auch Fernseher ab, die aus „nicht verfügbar“ angehen, beim Start von Home Assistant schon laufen oder um „Aktiv ab“ kurz nicht erreichbar sind.
+
+Eine Bestätigung gilt, bis der Fernseher länger als 2 Minuten aus oder nicht verfügbar war. Kurzes Flackern zwischen „aus“ und „nicht verfügbar“ (typisch für Android TV) beendet sie nicht. Enden die Regeln (z. B. um „Aktiv bis“), endet auch die Freigabe.
+
+Beim Ausschalten wartet die Integration bis zu 10 Sekunden auf den neuen Zustand, bevor sie es noch einmal versucht. Bei Android TV ist Ausschalten die Power-Taste, ein zu früher zweiter Druck würde den Fernseher wieder einschalten. Nach der Home-Taste für eine gesperrte App prüft sie nach 5 Sekunden, ob die App noch läuft, und schaltet sonst den Fernseher aus. Läuft während einer Abfrage ein zweiter Fernseher des Eintrags an, gilt die Abfrage für beide.
+
+Jede Aktion steht mit Grund im **Logbuch** („hat den Fernseher ausgeschaltet (keine Bestätigung)“). Unter Geräte & Dienste gibt es einen **Diagnose-Download** mit Einstellungen (ohne Code) und aktuellem Zustand.
+
 ## Ereignisse für eigene Automationen
 
-`kindersicherung_confirmed`, `kindersicherung_failed` (mit `attempts`, `max_attempts`, `reason` = `timeout` oder `wrong_code`), `kindersicherung_locked` (mit `lock_until`), `kindersicherung_unlocked`. Alle enthalten `entry_id` und `name`.
+`kindersicherung_action` (mit `action` = `turn_off` oder `close_app`, `reason` und `entity_id`), `kindersicherung_confirmed`, `kindersicherung_failed` (mit `attempts`, `max_attempts`, `reason` = `timeout` oder `wrong_code`), `kindersicherung_locked` (mit `lock_until`), `kindersicherung_unlocked`. Alle enthalten `entry_id` und `name`.
 
 ## Unterschiede zur bisherigen Automation
 
