@@ -52,9 +52,12 @@ def attempts_after_failure(
     Liegt der letzte Fehlversuch länger als `reset_minutes` zurück
     (und ist `reset_minutes` > 0), beginnt die Zählung bei 1.
     """
-    if reset_minutes > 0 and last_failure is not None:
-        if now - last_failure > timedelta(minutes=reset_minutes):
-            attempts = 0
+    if (
+        reset_minutes > 0
+        and last_failure is not None
+        and now - last_failure > timedelta(minutes=reset_minutes)
+    ):
+        attempts = 0
     return attempts + 1
 
 
