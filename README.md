@@ -13,7 +13,19 @@ Die Integration ersetzt die Automationen „Kindersicherung TV Wohnzimmer“ sam
 
 Pro Einrichtung entsteht ein Gerät mit eigener Sperre. Du kannst die Integration mehrfach hinzufügen, z. B. für jeden Fernseher einzeln mit eigenen Zeiten.
 
-## Einstellungen (Einrichtung und „Konfigurieren“)
+## Einstellungen
+
+Beim **Einrichten** fragt die Integration nur das Nötigste ab: Name, Fernseher, Handy-Benachrichtigung, Zahlencode, Zeitfenster und gesperrte Apps.
+
+Unter **Konfigurieren** öffnet sich ein Menü mit fünf Bereichen, die jeweils für sich gespeichert werden:
+
+1. **Fernseher und Benachrichtigungen**
+2. **Zeitfenster, Ferien und Vorwarnung** (inkl. zweitem Zeitfenster)
+3. **Gesperrte Apps** (z. B. YouTube, Freigabedauer)
+4. **Tageslimit**
+5. **Code, Bestätigung und Sperre**
+
+Die häufigsten Werte lassen sich außerdem direkt auf der Geräteseite oder im Dashboard ändern, ohne den Editor zu öffnen: **Sperre ab** und **Sperre bis** (`time`), **Tageslimit**, **Dauer App-Freigabe** und **Vorwarnung** (`number`, Schieberegler) sowie **Apps immer sperren** (`switch`). Diese Änderungen wirken sofort, ohne die Integration neu zu laden.
 
 | Einstellung | Bedeutung |
 |---|---|
@@ -26,7 +38,7 @@ Pro Einrichtung entsteht ein Gerät mit eigener Sperre. Du kannst die Integratio
 | Hinweis bei Sperre | Bei Sperre geht eine Nachricht an alle Ziele („gesperrt bis 17:42 Uhr“). Wird währenddessen ein Fernseher eingeschaltet, sagen die notify-Entitäten (z. B. Sprachausgabe) die Sperrzeit an, höchstens einmal pro Minute. |
 | Aktiv ab / bis, Wochentage | Zeitfenster der Abfrage. Gleiche Start- und Endzeit bedeutet ganztägig, Start nach Ende ein Fenster über Mitternacht. Bei einem Fenster über Mitternacht zählt der Morgen zum Wochentag des Abends: 21:00 bis 07:30 mit Sonntag bis Donnerstag sperrt Sonntagabend bis Freitagmorgen, Freitagabend bleibt frei. Sonst bezieht sich der Wochentag auf den aktuellen Tag. Standard: 00:00 bis 19:00 an allen Tagen. |
 | Bei Beginn des Zeitfensters ausschalten | Läuft zu „Aktiv ab“ noch ein Fernseher, wird er ausgeschaltet. Wer ihn danach einschaltet, muss bestätigen. Standard: aus. |
-| Zweites Zeitfenster | Optional (aufklappbar), z. B. am Wochenende 22:30 bis 08:00. Ohne gewählte Wochentage ist es aus. |
+| Zweites Zeitfenster | Optional, z. B. am Wochenende 22:30 bis 08:00. Ohne gewählte Wochentage ist es aus. |
 | Gesperrte Apps | Teil des App-Namens oder der App-ID, Vorauswahl bei neuen Einträgen: `youtube`. Die App wird sofort beendet, auch nach einer normalen Bestätigung. Bei Android TV drückt die Integration Home auf der zugehörigen `remote`-Entität, ohne Fernbedienungs-Entität wird der Fernseher ausgeschaltet. |
 | Gesperrte Apps immer beenden | An (Standard bei neuen Einträgen): jederzeit. Aus: nur im Zeitfenster. Freigabe mit dem Zahlencode im Feld **Code eingeben**, mit **App freigeben** in der Handy-Benachrichtigung (kommt, sobald eine App beendet wurde) oder durch eine Bestätigung per Code bzw. Handy. Ein falscher Code zählt als Fehlversuch. |
 | Dauer einer App-Freigabe | Standard 60 Minuten. |

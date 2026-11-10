@@ -12,6 +12,12 @@
         "state": {
           "on": "mdi:check-circle"
         }
+      },
+      "app_block_always": {
+        "default": "mdi:application-lock",
+        "state": {
+          "off": "mdi:application-outline"
+        }
       }
     },
     "binary_sensor": {
@@ -74,6 +80,25 @@
     "text": {
       "code": {
         "default": "mdi:form-textbox-password"
+      }
+    },
+    "time": {
+      "window_start": {
+        "default": "mdi:clock-start"
+      },
+      "window_end": {
+        "default": "mdi:clock-end"
+      }
+    },
+    "number": {
+      "daily_limit": {
+        "default": "mdi:timer-cog-outline"
+      },
+      "app_release": {
+        "default": "mdi:application-cog-outline"
+      },
+      "warn": {
+        "default": "mdi:bell-alert-outline"
       }
     }
   }

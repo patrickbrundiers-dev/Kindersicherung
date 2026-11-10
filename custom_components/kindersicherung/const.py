@@ -29,9 +29,6 @@ CONF_PAUSE_ENTITIES = "pause_entities"
 CONF_WARN_MINUTES = "warn_minutes"
 CONF_DAILY_LIMIT_MINUTES = "daily_limit_minutes"
 
-# Abschnitte im Editor (werden beim Speichern flach abgelegt).
-SECTION_SECOND_WINDOW = "second_window"
-SECTION_RULES = "rules"
 CONF_CONFIRM_TIMEOUT = "confirm_timeout"
 CONF_MAX_ATTEMPTS = "max_attempts"
 CONF_LOCK_MINUTES = "lock_minutes"

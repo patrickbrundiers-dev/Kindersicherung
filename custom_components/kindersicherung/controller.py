@@ -114,6 +114,7 @@ class KindersicherungController:
         self._confirm_ok = False
         self._wrong_code = False
 
+        self.loaded_options: dict[str, Any] = dict(entry.options)
         self.stats: dict[str, int] = dict.fromkeys(STAT_KEYS, 0)
         self.enabled = True
         self.confirmed = False
@@ -236,6 +237,21 @@ class KindersicherungController:
     def confirm_action_id(self) -> str:
         """Action-ID für den Bestätigen-Button der mobilen Benachrichtigung."""
         return f"{CONFIRM_ACTION_PREFIX}{self.entry.entry_id}"
+
+    async def async_set_option(self, key: str, value: Any) -> None:
+        """Eine Einstellung ändern (z. B. aus dem Dashboard)."""
+        self.hass.config_entries.async_update_entry(
+            self.entry, options={**self.entry.options, key: value}
+        )
+
+    @callback
+    def async_options_changed(self) -> None:
+        """Einstellungen ohne Neuladen übernommen: Entitäten aktualisieren."""
+        if self.limit_reached and (
+            self.daily_limit <= 0 or self.screen_time_minutes < self.daily_limit
+        ):
+            self.limit_reached = False
+        self._notify_listeners()
 
     def _entity_registry_platform(self, entity_id: str) -> str | None:
         from homeassistant.helpers import entity_registry as er
