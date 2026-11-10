@@ -1,12 +1,14 @@
 """Tests der reinen Logik (ohne Home Assistant)."""
 
 import importlib.util
-from datetime import datetime, timedelta, UTC
+import sys
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 _path = Path(__file__).parent.parent / "custom_components" / "kindersicherung" / "logic.py"
 _spec = importlib.util.spec_from_file_location("ks_logic", _path)
 logic = importlib.util.module_from_spec(_spec)
+sys.modules["ks_logic"] = logic
 _spec.loader.exec_module(logic)
 
 ALL = logic.WEEKDAY_KEYS
@@ -93,6 +95,75 @@ def test_app_matches():
     assert not logic.app_matches("ar.tvplayer.tv", ["youtube"])
     assert not logic.app_matches("", ["youtube"])
     assert not logic.app_matches("youtube", [" "])
+
+
+def test_evaluate():
+    rs = logic.RuleState
+    assert logic.evaluate(rs(enabled=False, in_window=True)).status == "off"
+    d = logic.evaluate(rs(in_window=True))
+    assert (d.status, d.restricted, d.apps_blocked) == ("window", True, False)
+    d = logic.evaluate(rs(in_window=True, paused=True))
+    assert (d.status, d.restricted) == ("paused", False)
+    d = logic.evaluate(rs(in_window=True, paused=True, limit_reached=True))
+    assert (d.status, d.restricted) == ("limit", True)
+    d = logic.evaluate(rs(in_window=True, exception_active=True, has_blocked_apps=True,
+                          app_block_always=True))
+    assert (d.status, d.restricted, d.apps_blocked) == ("exception", False, False)
+    d = logic.evaluate(rs(has_blocked_apps=True, app_block_always=True))
+    assert (d.status, d.apps_blocked) == ("free", True)
+    assert not logic.evaluate(rs(has_blocked_apps=True)).apps_blocked
+    assert logic.evaluate(rs(has_blocked_apps=True, in_window=True)).apps_blocked
+    assert not logic.evaluate(
+        rs(has_blocked_apps=True, app_block_always=True, app_released=True)
+    ).apps_blocked
+    assert logic.evaluate(rs(locked=True, in_window=True)).status == "locked"
+
+
+def test_sessions():
+    gap = timedelta(minutes=2)
+    t0 = datetime(2026, 11, 10, 21, 0)
+    s = logic.Session(logic.SESSION_FREE)
+    # Beginn der Regeln: läuft noch aus der freien Zeit
+    logic.update_session(s, True, t0, True, gap)
+    assert s.status == "free"
+    assert logic.session_action(s, True, "off") == "turn_off"
+    assert logic.session_action(s, True, "confirm") == "confirm"
+    assert logic.session_action(s, True, "none") == "ok"
+    assert logic.session_action(s, False, "off") == "ok"
+
+    # kurz aus/nicht verfügbar: gleiche Sitzung
+    s.status = logic.SESSION_CONFIRMED
+    logic.update_session(s, False, t0, True, gap)
+    logic.update_session(s, False, t0 + timedelta(seconds=30), True, gap)
+    assert s.off_since == t0
+    logic.update_session(s, True, t0 + timedelta(seconds=60), True, gap)
+    assert s.status == "confirmed" and s.off_since is None
+    assert logic.session_action(s, True, "off") == "ok"
+
+    # länger aus: neue Sitzung braucht Bestätigung
+    logic.update_session(s, False, t0 + timedelta(minutes=2), True, gap)
+    logic.update_session(s, True, t0 + timedelta(minutes=5), True, gap)
+    assert s.status == "new"
+    assert logic.session_action(s, True, "none") == "confirm"
+
+    # Regeln vorbei: frei, Freigaben enden
+    s.status = logic.SESSION_CONFIRMED
+    logic.update_session(s, True, t0 + timedelta(hours=11), False, gap)
+    assert s.status == "free"
+
+    # Freigabe mit Ablauf
+    s = logic.Session(logic.SESSION_CONFIRMED, confirmed_until=t0 + timedelta(minutes=60))
+    logic.update_session(s, True, t0 + timedelta(minutes=59), True, gap)
+    assert s.status == "confirmed"
+    logic.update_session(s, True, t0 + timedelta(minutes=60), True, gap)
+    assert s.status == "new"
+
+    # Speichern und Laden
+    s = logic.Session(logic.SESSION_CONFIRMED, off_since=t0)
+    assert logic.Session.from_dict(s.as_dict()) == logic.Session(
+        logic.SESSION_CONFIRMED, off_since=t0
+    )
+    assert logic.Session.from_dict({"status": "kaputt"}).status == "new"
 
 
 def test_parse_time_accepts_seconds():

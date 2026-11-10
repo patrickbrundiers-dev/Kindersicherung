@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, time, timedelta
+from typing import Any
 
 WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
@@ -134,3 +136,157 @@ def app_matches(app: str | None, blocked: list[str]) -> bool:
         return False
     value = app.lower()
     return any(entry.strip().lower() in value for entry in blocked if entry.strip())
+
+
+# ----------------------------------------------------------------------
+# Entscheidung: Was gilt gerade? (eine Stelle für Status und Durchsetzung)
+# ----------------------------------------------------------------------
+@dataclass(frozen=True)
+class RuleState:
+    """Alles, was die Entscheidung braucht (ohne Home Assistant)."""
+
+    enabled: bool = True
+    locked: bool = False
+    exception_active: bool = False
+    in_window: bool = False
+    paused: bool = False
+    limit_reached: bool = False
+    has_blocked_apps: bool = False
+    app_block_always: bool = False
+    app_released: bool = False
+
+
+@dataclass(frozen=True)
+class Decision:
+    """Ergebnis von `evaluate`."""
+
+    status: str
+    restricted: bool
+    apps_blocked: bool
+
+
+def evaluate(state: RuleState) -> Decision:
+    """Status, ob Regeln gelten (Bestätigung nötig) und ob Apps gesperrt sind."""
+    if not state.enabled:
+        return Decision("off", False, False)
+    restricted = not state.exception_active and (
+        state.limit_reached or (state.in_window and not state.paused)
+    )
+    apps_blocked = (
+        state.has_blocked_apps
+        and not state.exception_active
+        and not state.app_released
+        and (state.app_block_always or restricted)
+    )
+    if state.locked:
+        status = "locked"
+    elif state.exception_active:
+        status = "exception"
+    elif state.limit_reached:
+        status = "limit"
+    elif state.in_window:
+        status = "paused" if state.paused else "window"
+    else:
+        status = "free"
+    return Decision(status, restricted, apps_blocked)
+
+
+# ----------------------------------------------------------------------
+# Sitzungen: Gilt ein laufender Fernseher als freigegeben?
+# ----------------------------------------------------------------------
+SESSION_FREE = "free"  # eingeschaltet, als keine Regeln galten
+SESSION_NEW = "new"  # braucht eine Bestätigung, sobald Regeln gelten
+SESSION_CONFIRMED = "confirmed"
+
+AT_START_OFF = "off"
+AT_START_CONFIRM = "confirm"
+AT_START_NONE = "none"
+AT_START_OPTIONS = [AT_START_OFF, AT_START_CONFIRM, AT_START_NONE]
+
+ACTION_OK = "ok"
+ACTION_CONFIRM = "confirm"
+ACTION_TURN_OFF = "turn_off"
+
+
+@dataclass
+class Session:
+    """Freigabe eines Fernsehers, bis er länger aus war."""
+
+    status: str = SESSION_NEW
+    off_since: datetime | None = None
+    confirmed_until: datetime | None = None
+    retry_after: datetime | None = None
+
+    def as_dict(self) -> dict[str, str | None]:
+        """Zum Speichern."""
+        return {
+            "status": self.status,
+            "off_since": self.off_since.isoformat() if self.off_since else None,
+            "confirmed_until": self.confirmed_until.isoformat()
+            if self.confirmed_until
+            else None,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Session:
+        """Aus dem Speicher."""
+
+        def parse(key: str) -> datetime | None:
+            raw = data.get(key)
+            return datetime.fromisoformat(raw) if raw else None
+
+        status = data.get("status")
+        if status not in (SESSION_FREE, SESSION_NEW, SESSION_CONFIRMED):
+            status = SESSION_NEW
+        return cls(status, parse("off_since"), parse("confirmed_until"))
+
+
+def update_session(
+    session: Session,
+    active: bool,
+    now: datetime,
+    restricted: bool,
+    gap: timedelta,
+) -> None:
+    """Sitzung an den aktuellen Zustand anpassen.
+
+    Aus oder nicht verfügbar zählt gleich. Erst wenn ein Fernseher länger als
+    `gap` aus war, beginnt beim Einschalten eine neue Sitzung. So stört ein
+    kurzes Flackern zwischen „aus“ und „nicht verfügbar“ nicht, und ein
+    Einschalten aus „nicht verfügbar“ wird genauso geprüft wie aus „aus“.
+    """
+    if not active:
+        if session.off_since is None:
+            session.off_since = now
+        session.retry_after = None
+        return
+    if session.off_since is not None:
+        if now - session.off_since >= gap:
+            session.status = SESSION_NEW
+            session.confirmed_until = None
+        session.off_since = None
+    if not restricted:
+        # Regeln vorbei: Freigaben enden, der nächste Beginn prüft neu.
+        session.status = SESSION_FREE
+        session.confirmed_until = None
+    elif (
+        session.status == SESSION_CONFIRMED
+        and session.confirmed_until is not None
+        and now >= session.confirmed_until
+    ):
+        session.status = SESSION_FREE if not restricted else SESSION_NEW
+        session.confirmed_until = None
+
+
+def session_action(session: Session, restricted: bool, at_start: str) -> str:
+    """Was mit einem laufenden Fernseher passieren soll."""
+    if not restricted or session.status == SESSION_CONFIRMED:
+        return ACTION_OK
+    if session.status == SESSION_FREE:
+        # Lief schon, bevor die Regeln begannen (z. B. Beginn des Zeitfensters).
+        if at_start == AT_START_OFF:
+            return ACTION_TURN_OFF
+        if at_start == AT_START_CONFIRM:
+            return ACTION_CONFIRM
+        return ACTION_OK
+    return ACTION_CONFIRM

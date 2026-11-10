@@ -5,8 +5,12 @@ from __future__ import annotations
 from typing import Any
 
 import voluptuous as vol
-
-from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlow,
+)
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.selector import (
     BooleanSelector,
@@ -26,30 +30,17 @@ from homeassistant.helpers.selector import (
 
 from .const import (
     APP_SUGGESTIONS,
-    CONF_APP_BLOCK_ALWAYS,
-    CONF_APP_RELEASE_MINUTES,
-    CONF_BLOCKED_APPS,
-    CONF_DAILY_LIMIT_MINUTES,
-    CONF_PAUSE_ENTITIES,
-    CONF_PENALTY_HOURS,
-    CONF_TIME_END_2,
-    CONF_TIME_START_2,
-    CONF_WARN_MINUTES,
-    CONF_WEEKDAYS_2,
-    DEFAULT_APP_BLOCK_ALWAYS,
-    DEFAULT_APP_RELEASE_MINUTES,
-    DEFAULT_BLOCKED_APPS,
-    DEFAULT_DAILY_LIMIT_MINUTES,
-    DEFAULT_PENALTY_HOURS,
-    DEFAULT_TIME_END_2,
-    DEFAULT_TIME_START_2,
-    DEFAULT_WARN_MINUTES,
     CONF_ACTIONABLE,
     CONF_ANNOUNCE_LOCK,
+    CONF_APP_BLOCK_ALWAYS,
+    CONF_APP_RELEASE_MINUTES,
+    CONF_AT_START,
     CONF_ATTEMPT_RESET_MINUTES,
+    CONF_BLOCKED_APPS,
     CONF_CONFIRM_CODE,
     CONF_CONFIRM_ENTITIES,
     CONF_CONFIRM_TIMEOUT,
+    CONF_DAILY_LIMIT_MINUTES,
     CONF_LOCK_MINUTES,
     CONF_MAX_ATTEMPTS,
     CONF_MEDIA_PLAYERS,
@@ -57,23 +48,38 @@ from .const import (
     CONF_NAME,
     CONF_NOTIFY_ENTITIES,
     CONF_NOTIFY_SERVICES,
+    CONF_PAUSE_ENTITIES,
+    CONF_PENALTY_HOURS,
     CONF_TIME_END,
+    CONF_TIME_END_2,
     CONF_TIME_START,
+    CONF_TIME_START_2,
     CONF_TURN_OFF_AT_START,
+    CONF_WARN_MINUTES,
     CONF_WEEKDAYS,
+    CONF_WEEKDAYS_2,
     DEFAULT_ACTIONABLE,
     DEFAULT_ANNOUNCE_LOCK,
+    DEFAULT_APP_BLOCK_ALWAYS,
+    DEFAULT_APP_RELEASE_MINUTES,
     DEFAULT_ATTEMPT_RESET_MINUTES,
+    DEFAULT_BLOCKED_APPS,
     DEFAULT_CONFIRM_TIMEOUT,
+    DEFAULT_DAILY_LIMIT_MINUTES,
     DEFAULT_LOCK_MINUTES,
     DEFAULT_MAX_ATTEMPTS,
     DEFAULT_MESSAGE,
+    DEFAULT_PENALTY_HOURS,
     DEFAULT_TIME_END,
+    DEFAULT_TIME_END_2,
     DEFAULT_TIME_START,
+    DEFAULT_TIME_START_2,
     DEFAULT_TURN_OFF_AT_START,
+    DEFAULT_WARN_MINUTES,
     DOMAIN,
     WEEKDAYS,
 )
+from .logic import AT_START_CONFIRM, AT_START_NONE, AT_START_OFF, AT_START_OPTIONS
 
 DEFAULT_NAME = "Wohnzimmer TV"
 
@@ -108,7 +114,7 @@ DEFAULTS: dict[str, Any] = {
     CONF_TIME_START: DEFAULT_TIME_START,
     CONF_TIME_END: DEFAULT_TIME_END,
     CONF_WEEKDAYS: WEEKDAYS,
-    CONF_TURN_OFF_AT_START: DEFAULT_TURN_OFF_AT_START,
+    CONF_AT_START: AT_START_CONFIRM,
     CONF_TIME_START_2: DEFAULT_TIME_START_2,
     CONF_TIME_END_2: DEFAULT_TIME_END_2,
     CONF_WEEKDAYS_2: [],
@@ -139,7 +145,7 @@ STEPS: dict[str, tuple[str, ...]] = {
         CONF_TIME_START,
         CONF_TIME_END,
         CONF_WEEKDAYS,
-        CONF_TURN_OFF_AT_START,
+        CONF_AT_START,
         CONF_WARN_MINUTES,
         CONF_TIME_START_2,
         CONF_TIME_END_2,
@@ -260,9 +266,26 @@ def _fields(
         CONF_TIME_START: lambda: (required(CONF_TIME_START), TimeSelector()),
         CONF_TIME_END: lambda: (required(CONF_TIME_END), TimeSelector()),
         CONF_WEEKDAYS: lambda: (required(CONF_WEEKDAYS), _weekday_selector()),
-        CONF_TURN_OFF_AT_START: lambda: (
-            required(CONF_TURN_OFF_AT_START),
-            BooleanSelector(),
+        CONF_AT_START: lambda: (
+            # Ältere Einträge: Wert aus „Bei Beginn ausschalten“ übernehmen.
+            vol.Required(
+                CONF_AT_START,
+                default=current.get(
+                    CONF_AT_START,
+                    AT_START_CONFIRM
+                    if CONF_MEDIA_PLAYERS not in current
+                    else AT_START_OFF
+                    if current.get(CONF_TURN_OFF_AT_START, DEFAULT_TURN_OFF_AT_START)
+                    else AT_START_NONE,
+                ),
+            ),
+            SelectSelector(
+                SelectSelectorConfig(
+                    options=AT_START_OPTIONS,
+                    translation_key="at_window_start",
+                    mode=SelectSelectorMode.LIST,
+                )
+            ),
         ),
         CONF_TIME_START_2: lambda: (required(CONF_TIME_START_2), TimeSelector()),
         CONF_TIME_END_2: lambda: (required(CONF_TIME_END_2), TimeSelector()),

@@ -163,7 +163,7 @@ async def test_options_schedule_and_apps_steps(hass: HomeAssistant) -> None:
             "time_start": "21:00:00",
             "time_end": "07:30:00",
             "weekdays": ["sun", "mon"],
-            "turn_off_at_start": True,
+            "at_window_start": "off",
             "warn_minutes": 10,
             "time_start_2": "22:30:00",
             "time_end_2": "08:00:00",
@@ -174,6 +174,7 @@ async def test_options_schedule_and_apps_steps(hass: HomeAssistant) -> None:
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert entry.options["weekdays_2"] == ["fri", "sat"]
     assert entry.options["warn_minutes"] == 10
+    assert entry.runtime_data.at_start == "off"
     await hass.async_block_till_done()
 
     result = await hass.config_entries.options.async_init(entry.entry_id)
@@ -183,7 +184,7 @@ async def test_options_schedule_and_apps_steps(hass: HomeAssistant) -> None:
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],
         {"time_start": "21:00:00", "time_end": "07:30:00", "weekdays": [],
-         "turn_off_at_start": True, "warn_minutes": 10,
+         "at_window_start": "off", "warn_minutes": 10,
          "time_start_2": "22:30:00", "time_end_2": "08:00:00"},
     )
     assert result["type"] is FlowResultType.FORM
@@ -320,13 +321,28 @@ def _next_midnight():
     )
 
 
+PAUSE = "input_boolean.ferien"
+
+
+async def _setup_running_before_window(hass: HomeAssistant, **overrides) -> MockConfigEntry:
+    """Fernseher läuft, solange keine Regeln gelten (Pause an)."""
+    hass.states.async_set(PAUSE, "on")
+    return await _setup_with_tv_on(hass, pause_entities=[PAUSE], **overrides)
+
+
+async def _rules_begin(hass: HomeAssistant) -> None:
+    hass.states.async_set(PAUSE, "off")
+    await hass.async_block_till_done()
+    await asyncio.sleep(0.05)
+
+
 async def test_turn_off_at_window_start(hass: HomeAssistant) -> None:
     turn_off = async_mock_service(hass, "media_player", "turn_off")
-    entry = await _setup_with_tv_on(hass, turn_off_at_start=True)
+    entry = await _setup_running_before_window(hass, turn_off_at_start=True)
+    assert entry.runtime_data.at_start == "off"
     assert not turn_off
 
-    async_fire_time_changed(hass, _next_midnight())
-    await hass.async_block_till_done()
+    await _rules_begin(hass)
     assert len(turn_off) >= 1
     assert turn_off[0].data["entity_id"] == [TV]
     assert await hass.config_entries.async_unload(entry.entry_id)
@@ -334,11 +350,137 @@ async def test_turn_off_at_window_start(hass: HomeAssistant) -> None:
 
 async def test_no_turn_off_at_window_start_by_default(hass: HomeAssistant) -> None:
     turn_off = async_mock_service(hass, "media_player", "turn_off")
-    entry = await _setup_with_tv_on(hass)
+    notify = async_mock_service(hass, "notify", "send_message")
+    entry = await _setup_running_before_window(hass, notify_entities=["notify.sprechen"])
+    assert entry.runtime_data.at_start == "none"
 
+    await _rules_begin(hass)
     async_fire_time_changed(hass, _next_midnight())
     await hass.async_block_till_done()
+    await asyncio.sleep(1.2)
     assert not turn_off
+    assert not notify
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_confirmation_at_window_start(hass: HomeAssistant) -> None:
+    turn_off = async_mock_service(hass, "media_player", "turn_off")
+    notify = async_mock_service(hass, "notify", "send_message")
+    entry = await _setup_running_before_window(
+        hass, at_window_start="confirm", notify_entities=["notify.sprechen"]
+    )
+    await _rules_begin(hass)
+    assert notify and notify[0].data["message"] == "Bitte bestätigen"
+    await asyncio.sleep(1.2)
+    assert turn_off
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_tv_running_at_startup_in_window_is_checked(hass: HomeAssistant) -> None:
+    turn_off = async_mock_service(hass, "media_player", "turn_off")
+    entry = await _setup_with_tv_on(hass)
+    assert entry.runtime_data.waiting_for_confirmation
+    await asyncio.sleep(1.2)
+    assert turn_off
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_power_on_from_unavailable_needs_confirmation(hass: HomeAssistant) -> None:
+    turn_off = async_mock_service(hass, "media_player", "turn_off")
+    hass.states.async_set(TV, "unavailable")
+    entry = MockConfigEntry(domain=DOMAIN, title="Test TV", data={}, options=BASE_OPTIONS)
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    controller = entry.runtime_data
+    # Länger nicht verfügbar als die Lücke
+    controller.sessions[TV].off_since -= timedelta(minutes=5)
+
+    hass.states.async_set(TV, "on")
+    await hass.async_block_till_done()
+    assert controller.waiting_for_confirmation
+    await asyncio.sleep(1.2)
+    assert turn_off
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_flicker_keeps_confirmation(hass: HomeAssistant) -> None:
+    turn_off = async_mock_service(hass, "media_player", "turn_off")
+    entry = await _setup(hass)
+    controller = entry.runtime_data
+    await _tv_on(hass)
+    await controller.async_confirm("switch")
+    await asyncio.sleep(0.05)
+    assert controller.sessions[TV].status == "confirmed"
+
+    # kurz „aus“ und „nicht verfügbar“, dann wieder an: keine neue Abfrage
+    for state in ("off", "unavailable", "on"):
+        hass.states.async_set(TV, state)
+        await hass.async_block_till_done()
+    assert not controller.waiting_for_confirmation
+
+    # länger aus: neue Sitzung, neue Abfrage
+    hass.states.async_set(TV, "off")
+    await hass.async_block_till_done()
+    controller.sessions[TV].off_since -= timedelta(minutes=5)
+    await _tv_on(hass)
+    assert controller.waiting_for_confirmation
+    await asyncio.sleep(1.2)
+    assert turn_off
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_second_tv_during_confirmation_is_turned_off(hass: HomeAssistant) -> None:
+    turn_off = async_mock_service(hass, "media_player", "turn_off")
+    tv2 = "media_player.tv2"
+    hass.states.async_set(tv2, "off")
+    entry = await _setup(hass, media_players=[TV, tv2])
+    await _tv_on(hass)
+    hass.states.async_set(tv2, "on")
+    await hass.async_block_till_done()
+    await asyncio.sleep(1.2)
+    switched_off = {e for call in turn_off for e in call.data["entity_id"]}
+    assert switched_off == {TV, tv2}
+    assert entry.runtime_data.attempts == 1
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_turn_off_waits_for_state_before_retry(hass: HomeAssistant) -> None:
+    from custom_components.kindersicherung import devices
+
+    calls = []
+
+    async def slow_off(call) -> None:
+        calls.append(call)
+
+        async def later() -> None:
+            await asyncio.sleep(0.1)
+            hass.states.async_set(TV, "off")
+
+        hass.async_create_task(later())
+
+    hass.services.async_register("media_player", "turn_off", slow_off)
+    hass.states.async_set(TV, "on")
+    assert await devices.async_turn_off(hass, [TV])
+    assert len(calls) == 1
+
+    # Fernseher reagiert gar nicht: drei Versuche
+    calls.clear()
+    hass.services.async_register("media_player", "turn_off", lambda call: calls.append(call))
+    hass.states.async_set(TV, "on")
+    assert not await devices.async_turn_off(hass, [TV])
+    assert len(calls) == devices.TURN_OFF_TRIES
+
+
+async def test_late_phone_confirmation_does_not_release_apps(hass: HomeAssistant) -> None:
+    async_mock_service(hass, "media_player", "turn_off")
+    entry = await _setup(hass, blocked_apps=["youtube"])
+    controller = entry.runtime_data
+    hass.bus.async_fire(
+        "mobile_app_notification_action", {"action": controller.confirm_action_id}
+    )
+    await hass.async_block_till_done()
+    assert not controller.app_released
     assert await hass.config_entries.async_unload(entry.entry_id)
 
 
@@ -711,4 +853,83 @@ async def test_status_sensor_and_apps_closed(hass: HomeAssistant) -> None:
     await hass.async_block_till_done()
     await asyncio.sleep(0.1)
     assert hass.states.get(closed).state == "1"
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def _android_tv(hass: HomeAssistant) -> tuple[str, str]:
+    from homeassistant.helpers import device_registry as dr
+
+    tv_entry = MockConfigEntry(domain="androidtv_remote")
+    tv_entry.add_to_hass(hass)
+    device = dr.async_get(hass).async_get_or_create(
+        config_entry_id=tv_entry.entry_id, identifiers={("androidtv_remote", "tv9")}
+    )
+    ent_reg = er.async_get(hass)
+    player = ent_reg.async_get_or_create(
+        "media_player", "androidtv_remote", "tv9", device_id=device.id
+    ).entity_id
+    remote = ent_reg.async_get_or_create(
+        "remote", "androidtv_remote", "tv9", device_id=device.id
+    ).entity_id
+    return player, remote
+
+
+async def test_app_still_running_after_home_turns_tv_off(hass: HomeAssistant) -> None:
+    player, _remote = await _android_tv(hass)
+    home_calls = []
+
+    async def home(call) -> None:
+        home_calls.append(call)
+        if len(home_calls) == 1:
+            hass.states.async_set(player, "on", {"app_id": "com.google.android.tvlauncher"})
+
+    hass.services.async_register("remote", "send_command", home)
+    turn_off = async_mock_service(hass, "media_player", "turn_off")
+    hass.states.async_set(player, "on", {"app_id": "ar.tvplayer.tv"})
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Leonie",
+        data={},
+        options={**BASE_OPTIONS, "media_players": [player], "weekdays": [],
+                 "blocked_apps": ["youtube"], "app_block_always": True},
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    # Home hilft: App ist weg, Fernseher bleibt an
+    hass.states.async_set(player, "playing", YOUTUBE)
+    await hass.async_block_till_done()
+    await asyncio.sleep(0.3)
+    assert len(home_calls) == 1
+    assert not turn_off
+
+    # Home hilft nicht: nach der Kontrolle wird ausgeschaltet
+    hass.states.async_set(player, "playing", YOUTUBE)
+    await hass.async_block_till_done()
+    await asyncio.sleep(0.3)
+    assert len(home_calls) == 2
+    assert turn_off
+    assert entry.runtime_data.stats["apps_closed"] == 2
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_diagnostics_hide_code_and_logbook_event(hass: HomeAssistant) -> None:
+    from custom_components.kindersicherung.diagnostics import (
+        async_get_config_entry_diagnostics,
+    )
+
+    async_mock_service(hass, "media_player", "turn_off")
+    events = []
+    hass.bus.async_listen("kindersicherung_action", events.append)
+    entry = await _setup(hass, confirm_code="4711")
+    diag = await async_get_config_entry_diagnostics(hass, entry)
+    assert diag["options"]["confirm_code"] == "**REDACTED**"
+    assert diag["state"]["status"] == "window"
+
+    await entry.runtime_data.async_lock()
+    hass.states.async_set(TV, "on")
+    await hass.async_block_till_done()
+    await asyncio.sleep(0.05)
+    assert any(e.data["action"] == "turn_off" and e.data["reason"] == "locked" for e in events)
     assert await hass.config_entries.async_unload(entry.entry_id)

@@ -66,7 +66,7 @@
           "time_start": "Aktiv ab",
           "time_end": "Aktiv bis",
           "weekdays": "Wochentage",
-          "turn_off_at_start": "Bei Beginn des Zeitfensters ausschalten",
+          "at_window_start": "Wenn bei Beginn der Regeln ein Fernseher läuft",
           "warn_minutes": "Vorwarnung (0 = aus)",
           "time_start_2": "Zweites Fenster ab",
           "time_end_2": "Zweites Fenster bis",
@@ -76,7 +76,7 @@
         "data_description": {
           "time_start": "Außerhalb des Zeitfensters wird nicht abgefragt. Gleiche Start- und Endzeit bedeutet ganztägig.",
           "weekdays": "Über Mitternacht (z. B. 21:00 bis 07:30) zählt der Morgen zum Abend davor.",
-          "turn_off_at_start": "Läuft zu „Aktiv ab“ noch ein Fernseher, wird er ausgeschaltet. Wer ihn danach wieder einschaltet, muss bestätigen.",
+          "at_window_start": "Gilt zu „Aktiv ab“ und wenn eine Ausnahme oder Pause endet. Wer einen ausgeschalteten Fernseher wieder einschaltet, muss bestätigen.",
           "warn_minutes": "So viele Minuten vor Beginn des Zeitfensters und vor Ende des Tageslimits kommt eine Nachricht, wenn ein Fernseher läuft.",
           "weekdays_2": "Optional, z. B. andere Zeiten am Wochenende. Ohne Wochentage ist das zweite Fenster aus.",
           "pause_entities": "Ist eine dieser Entitäten an (Kalender mit Ferien-Termin, input_boolean, binary_sensor), gelten die Zeitfenster nicht. Tageslimit und Sperre bleiben."
@@ -248,6 +248,13 @@
         "fri": "Freitag",
         "sat": "Samstag",
         "sun": "Sonntag"
+      }
+    },
+    "at_window_start": {
+      "options": {
+        "off": "Ausschalten",
+        "confirm": "Bestätigung verlangen",
+        "none": "Weiterlaufen lassen"
       }
     }
   }

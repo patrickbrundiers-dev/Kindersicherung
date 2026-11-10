@@ -19,6 +19,8 @@ CONF_TIME_START = "time_start"
 CONF_TIME_END = "time_end"
 CONF_WEEKDAYS = "weekdays"
 CONF_TURN_OFF_AT_START = "turn_off_at_start"
+# Was bei Beginn der Regeln mit einem laufenden Fernseher passiert: off, confirm, none.
+CONF_AT_START = "at_window_start"
 CONF_TIME_START_2 = "time_start_2"
 CONF_TIME_END_2 = "time_end_2"
 CONF_WEEKDAYS_2 = "weekdays_2"
@@ -75,6 +77,8 @@ EVENT_CONFIRMED = f"{DOMAIN}_confirmed"
 EVENT_FAILED = f"{DOMAIN}_failed"
 EVENT_LOCKED = f"{DOMAIN}_locked"
 EVENT_UNLOCKED = f"{DOMAIN}_unlocked"
+# Jede Aktion der Kindersicherung mit Grund (für Logbuch und eigene Automationen).
+EVENT_ACTION = f"{DOMAIN}_action"
 
 MOBILE_APP_ACTION_EVENT = "mobile_app_notification_action"
 CONFIRM_ACTION_PREFIX = "KINDERSICHERUNG_CONFIRM_"
